@@ -98,11 +98,22 @@ def readInput(inputFile):
 		print "Value for skipStep1 not recognized"
 		exit()
 
+	line = file.readline()
+	line = line.split()
+	tmp = line[1]
+	if tmp == "True":
+		poissonRatio = True
+	elif tmp == "False":
+		poissonRatio = False
+	else:
+		print "Value for poissonRatio not recognized"
+		exit()
+
 	return subCIF, subMillerString,\
 	       depCIF, depMillerString,\
 	       maxArea, areaThres, vecThres, angleThres,\
 	       capAtmS, capAtmD, fparam, nL, nConf, subAtRad, depAtRad,\
-	       skipStep1
+	       skipStep1, poissonRatio
 
 def getMillerFromString(millerString):
 
@@ -1240,6 +1251,7 @@ class Surface:
 					#TMP
 					self.norma=np.linalg.norm(self.a)
 					self.normb=np.linalg.norm(self.b)
+					print "NORM PRIM ",self.norma,self.normb
 					cosphi = np.dot(self.a,self.b)/(self.norma*self.normb)
 					if np.linalg.norm(check) != 0:
 						linear = False
@@ -1706,7 +1718,8 @@ def CheckListDuplicates(inlist, elem, in1, in2, in3, in4, in5, in6):
 
 class Interface:
 	def __init__(self,vecDep,vecSub,Deposit,Substrate,vecpair,bfrac,wbond,\
-	    	     atomicRadius, nL, capAtD, capAtS, genHD=True,genHS=True):
+	    	     atomicRadius, nL, capAtD, capAtS, genHD=True,genHS=True,\
+		     poissonRatio=True):
 
 		# Deposit surface and atoms below it
 		posDepBlk = Deposit.planeposblk.copy()
@@ -1767,7 +1780,7 @@ class Interface:
 		# Scale deposit so it matches substrate exactely
 		DSurfPosScale = self.__scale(DSurfPos,\
    				             vecDepR[0],vecDepR[1],\
-					     vecSubR[0],vecSubR[1])
+					     vecSubR[0],vecSubR[1],poissonRatio)
 		self.IfacePosSC,self.IfaceAtmSC,self.idxDep,self.idxSub,alignvec \
 					     = self.__alignsurfaces\
 				              (DepavecsR,SubavecsR,\
@@ -1864,11 +1877,11 @@ class Interface:
 		# Scale deposit so it matches substrate exactely
 		DSurfPosScale = self.__scale(DSurfPos,\
    				             vecDepR[0],vecDepR[1],\
-					     vecSubR[0],vecSubR[1])
+					     vecSubR[0],vecSubR[1],poissonRatio)
 
 		DSurfPosScaleL = self.__scale(DSurfPosL,\
    				             vecDepR[0],vecDepR[1],\
-					     vecSubR[0],vecSubR[1])
+					     vecSubR[0],vecSubR[1],poissonRatio)
 
 		# extend scaled deposit, use Sub vecs as they are the same
 #		DSurfPosScaleEx,DSurfAtmExSC = self.__extendsurface\
@@ -1928,11 +1941,39 @@ class Interface:
 		### END FOR SCORING FUNC 
 
 #		print "SC1 DEPOSIT"
+		SubVecX = np.linalg.norm(vecSubR[0])
+		SubVecY = np.linalg.norm(vecSubR[1])
+		DepVecX = np.linalg.norm(vecDepR[0])
+		DepVecY = np.linalg.norm(vecDepR[1])
+
+	        cosphi = np.dot(vecSubR[0],vecSubR[1])/(SubVecX*SubVecY)
+	        phiSub = m.acos(cosphi)*180/m.pi
+
+         	cosphi = np.dot(vecDepR[0],vecDepR[1])/(DepVecX*DepVecY)
+       	        phiDep = m.acos(cosphi)*180/m.pi
+
+		misfitX = abs(DepVecX/SubVecX)
+		misfitY = abs(DepVecY/SubVecY)
+		misfitPhi = (phiDep/phiSub)
+
+		if misfitX >1:
+			misfitX = 1-abs(misfitX-1)
+
+		if misfitY >1:
+			misfitY = 1-abs(1-misfitY)
+
+		if misfitPhi >1:
+			misfitPhi = 1-abs(misfitPhi-1)
+
+		print "MISFITS", misfitX,misfitY
+		print "MISFITS ANGLE", misfitPhi, phiSub ,phiDep
+
 		self.sc1 = self.SCORE7(self.IfacePosSExSC,self.idxDepExS,\
 				       self.idxSubExS,self.Depavecs,\
 				       self.Subavecs,self.IfaceVecs,\
 				       self.IfaceAtmSExSC,self.Depavecsall,\
-				       wbond,atomicRadius)
+				       wbond,atomicRadius,misfitX,misfitY,\
+				       misfitPhi)
 #		self.sc1 = 0
 #		print "SCORE OUTPUT SC1" ,self.sc1
 #		print "SC2 SUBSTRATE"
@@ -1940,7 +1981,8 @@ class Interface:
 				       self.idxDepExD,self.Subavecs,\
 				       self.Depavecs,self.IfaceVecs,\
 				       self.IfaceAtmExSC,self.Subavecsall,\
-				       wbond,atomicRadius)
+				       wbond,atomicRadius,misfitX,misfitY,\
+				       misfitPhi)
 #		self.sc2 = 0
 #		print "SCORE OUTPUT SC2", self.sc2
 
@@ -2515,6 +2557,18 @@ class Interface:
 		vector[1] /= 2
 		vn = np.linalg.norm(vector)
 
+		# Calculate cosine between vector and z-axis
+#		nv = np.linalg.norm(vector)
+#		zvec = np.array((0.0,0.0,vector[2]))
+#		nz = np.linalg.norm(zvec)
+#		cosphi = np.dot(vector,zvec)/(nv*nz)
+#		bfrac = 1.802/cosphi
+#		print "BFRAC", cosphi,bfrac
+		#For the straight vector, bfrac = 0.9
+#		if (avecsSidx < 0) and (avecsDidx < 0): 
+#			bfrac = 0.9
+
+
 		# Our system are oriented in the 1st quarter of coordinate system
 		# Force anticipatory vector to point there to
 		if vector[0] <0: vector[0] *= -1
@@ -2525,7 +2579,9 @@ class Interface:
 		lv = np.linalg.norm(vector)
 #		bfrac = covrad/lv
 		# end TEST 
+		bfrac = 0.9
 		vector=vector*bfrac
+		vector[2]=1.8024400000000007
 
 		
 		# Now, move the deposit according the resulting anticipatory 
@@ -2581,7 +2637,7 @@ class Interface:
 		return posout, labels, idxDep, idxSub, np.array(vector)
 
 
-	def __scale(self,pos,vec1D,vec2D,vec1S,vec2S):
+	def __scale(self,pos,vec1D,vec2D,vec1S,vec2S,poissonRatio):
 		
 		# Scale the coordinates such that deposit
 		# is always matching substrate
@@ -2641,6 +2697,16 @@ class Interface:
 
 		# Scale the positons:
 		posout = posout * vec1scale * vec2scale
+
+		poissonRatio = True
+		if poissonRatio:
+			m1 = n1D/n1S # misfit in x
+			m2 = n2D/n2S # misfit in y
+			ma = phiD/phiS # misfit in angle
+
+			mz = m1 * m2 * ma
+			vec3scale = np.array((1.0, 1.0, mz))
+			posout = posout * vec3scale
 
 		return posout
 
@@ -3019,7 +3085,7 @@ class Interface:
 		return score 
 
 	def SCORE7(self,pos,idx1,idx2,avecs1,avecs2,latticevecs,\
-			labels,avecsall1,f,atomicRadius):
+			labels,avecsall1,f,atomicRadius,mx,my,mphi):
 		# NUMBER OF BONDS PER UNIT ARES
 		#
 		# WEIGHTED BY BONDLENGTH
@@ -3104,6 +3170,8 @@ class Interface:
 	#	print "SCORE, SCORE2",score,scoreref
 		score = score/scoreref
 
+		score = score*mx*my*mphi
+
 		return score
 
 	def SCORE7metal(self,pos,idx1,idx2,avecs1,avecs2,latticevecs,f):
@@ -3176,9 +3244,9 @@ class Interface:
 		return score
 
 
-def formatXYZ(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,\
+def formatXYZ(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nL,mfit,\
 			             writeGEN=False,\
-                                     writeAIMS=False,writeGULP=False,
+                                     writeAIMS=False,writeGULP=False,\
 				     cstrlxD=0,cstrlxS=0,\
 				     cstrlxH=False,\
 				     bondmod=False): 
@@ -3388,18 +3456,31 @@ def formatXYZ(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,\
 	threshold = 0.2 # define threshol to add to top and bottom for 
 	                # float comparisons
 	if (cstrlxS):
-		order  = np.sort(iface.IfacePosSC[iface.idxSub,2])
-		order = np.unique(order)
-		bot  = round(order[cstrlxS-1],6) # bottom atom (substrate)
-		bot += threshold
+#		order  = np.sort(iface.IfacePosSC[iface.idxSub,2])
+#		order = np.unique(order)
+#		bot  = round(order[cstrlxS-1],6) # bottom atom (substrate)
+#		bot += threshold
 		frozenidx = []
+		bot = nL/3.0
 
 	if (cstrlxD):
-		order  = np.sort(iface.IfacePosSC[iface.idxDep,2])
-		order = np.unique(order)
-		top = round(order[(-1*cstrlxD)-1],6) # top atom (deposit)
-		top -= threshold
+#		order  = np.sort(iface.IfacePosSC[iface.idxDep,2])
+#		order = np.unique(order)
+#		top = round(order[(-1*cstrlxD)-1],6) # top atom (deposit)
+#		top -= threshold
 		frozenidx = []
+		top = nL + (2*(nL/3.0))
+
+	# Freeze the middle atoms
+	# Freeze 1/3 of the atom in S and D
+	# S: 1/3 * nL :  2/3 *nL
+	# D: nL + 1/3 * nL : nl+2/3 * nL
+
+	mBottomS = nL/3.0 #middle later Bottom of Substrate
+	mTopS    = 2*(nL/3.0)
+
+	mBottomD = nL + (nL/3.0)
+	mTopD    = nL + (2*(nL/3.0))
 
 	for i in range(len(iface.IfacePosSC)):
 		atom = iface.IfaceAtmSC[i]
@@ -3412,23 +3493,38 @@ def formatXYZ(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,\
 				      (x,y,z,atom))
 			# Constrain deposit hydrogen
 			if (cstrlxH) and atom == "H":
-				fileAIMS.write("constrain_relaxation .true.\n")
+				#fileAIMS.write("constrain_relaxation .true.\n")
+				fileAIMS.write("constrain_relaxation x\n")
+				fileAIMS.write("constrain_relaxation y\n")
 
 			if (((cstrlxS) or (cstrlxD)) and \
 			    ((round(z,6) >= top) or (round(z,6) <= bot) )):
 				fileAIMS.write\
-				("constrain_relaxation .true.\n")
-				frozenidx.append(i+1)
+				("constrain_relaxation x\n")
+				fileAIMS.write\
+				("constrain_relaxation y\n")
 
+				frozenidx.append(i+1)
+#			# Constrain middle layers
+#			if ((round(z,6) >= mBottomS ) and (round(z,6) <= mTopS) ):
+#				fileAIMS.write\
+#				("constrain_relaxation x\n")
+#				fileAIMS.write\
+#				("constrain_relaxation y\n")
+#			if ((round(z,6) >= mBottomD ) and (round(z,6) <= mTopD) ):
+#				fileAIMS.write\
+#				("constrain_relaxation x\n")
+#				fileAIMS.write\
+#				("constrain_relaxation y\n")
 
 		if writeGULP:
 			if (cstrlxH) and atom == "H":
 				fileGULP.write(("%4s    core   %12.6f   %12.6f"
-				"%12.6f 0.0 1.0 0.0 0 0 0\n")%(atom,x,y,z))
+				"%12.6f 0.0 1.0 0.0 0 0 1\n")%(atom,x,y,z))
 			elif (((cstrlxS) or (cstrlxD)) and \
 			    ((round(z,6) <= bot) or (round(z,6) >= top) )):
 				fileGULP.write(("%4s    core   %12.6f   %12.6f"
-				"%12.6f 0.0 1.0 0.0 0 0 0\n")%(atom,x,y,z))
+				"%12.6f 0.0 1.0 0.0 0 0 1\n")%(atom,x,y,z))
 			else:
 				fileGULP.write(("%4s    core   %12.6f   %12.6f"
 				"%12.6f 0.0 1.0 0.0 1 1 1\n")%(atom,x,y,z))
@@ -3449,23 +3545,30 @@ def formatXYZ(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,\
 			             (x,y,z,atom))
 
 				if (cstrlxH) and atom == "H":
+#					fileSAIMS.write\
+#					    ("constrain_relaxation .true.\n")
 					fileSAIMS.write\
-					    ("constrain_relaxation .true.\n")
+					    ("constrain_relaxation x\n")
+					fileSAIMS.write\
+					    ("constrain_relaxation y\n")
 				if (cstrlxS) and (round(z,6) <= bot):
+#					fileSAIMS.write\
+#					    ("constrain_relaxation .true.\n")
 					fileSAIMS.write\
-					    ("constrain_relaxation .true.\n")
-
+					    ("constrain_relaxation x\n")
+					fileSAIMS.write\
+					    ("constrain_relaxation y\n")
 			if writeGULP:
 				if (cstrlxH) and atom == "H":
 					fileGULPS.write\
 					(("%4s    core   %12.6f   %12.6f"
-					"%12.6f 0.0 1.0 0.0 0 0 0\n")\
+					"%12.6f 0.0 1.0 0.0 0 0 1\n")\
 							%(atom,x,y,z))
 
 				elif (cstrlxS) and (round(z,6) <= bot):
 					fileGULPS.write\
 					(("%4s    core   %12.6f   %12.6f"
-					"%12.6f 0.0 1.0 0.0 0 0 0\n")\
+					"%12.6f 0.0 1.0 0.0 0 0 1\n")\
 							%(atom,x,y,z))
 				else:
 					fileGULPS.write\
@@ -3483,23 +3586,31 @@ def formatXYZ(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,\
 			             (x,y,z,atom))
 
 				if (cstrlxH) and atom == "H":
+#					fileDAIMS.write\
+#					    ("constrain_relaxation .true.\n")
 					fileDAIMS.write\
-					    ("constrain_relaxation .true.\n")
+					    ("constrain_relaxation x\n")
+					fileDAIMS.write\
+					    ("constrain_relaxation y\n")
 				if (cstrlxD) and (round(z,6) >= top):
+#					fileDAIMS.write\
+#					    ("constrain_relaxation .true.\n")
 					fileDAIMS.write\
-					    ("constrain_relaxation .true.\n")
+					    ("constrain_relaxation x\n")
+					fileDAIMS.write\
+					    ("constrain_relaxation y\n")
 
 			if writeGULP:
 				if (cstrlxH) and atom == "H":
 					fileGULPD.write\
 					(("%4s    core   %12.6f   %12.6f"
-					"%12.6f 0.0 1.0 0.0 0 0 0\n")\
+					"%12.6f 0.0 1.0 0.0 0 0 1\n")\
 							%(atom,x,y,z))
 
 				elif (cstrlxD) and (round(z,6) >= top):
 					fileGULPD.write\
 					(("%4s    core   %12.6f   %12.6f"
-					"%12.6f 0.0 1.0 0.0 0 0 0\n")\
+					"%12.6f 0.0 1.0 0.0 0 0 1\n")\
 							%(atom,x,y,z))
 				else:
 					fileGULPD.write\
@@ -3547,6 +3658,7 @@ def formatXYZ(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,\
 	text="Outside idx:   "+"".join("%5i"% t for t in frozenidx)+"\n"
 	fileIDX.write(text)
 	fileIDX.write("Area: %12.6f\n"%area)
+	fileIDX.write("Misfit: %12.6f %12.6f\n"%(mfit[0],mfit[1]))
 
 	file.close()	
 	fileS.close()	
@@ -3606,7 +3718,7 @@ subCIF, subMillerString, \
 depCIF, depMillerString, \
 maxArea, areaThres, vecThres, angleThres,\
 capAtmS, capAtmD, fparam, nL, nConf, subAtRad, depAtRad,\
-skipStep1 = readInput(inputFile)
+skipStep1, poissonRatio = readInput(inputFile)
 
 print subCIF, subMillerString,\
 depCIF, depMillerString,\
@@ -3695,24 +3807,26 @@ print "RESULTS:"
 print "                 Vecx[A]         Vecy[A]    Angle[deg]  Area[A^2]"
 counter = 0
 nResults = len(resultlist)
+misfitList =[]
 for i in resultlist:
 	
 	ar1 = i[2]*i[3]*m.sin(i[4]*m.pi/180)
         ar2 = i[5]*i[6]*m.sin(i[7]*m.pi/180)
 
-	mu    = abs(1-(i[2]/i[5]))*100
-	mv    = abs(1-(i[3]/i[6]))*100
-	mang  = abs(1-(i[4]/i[7]))*100
-	marea = abs(1-(ar1/ar2))*100
+	mu    = (1-(i[2]/i[5]))*100  # Deposit/Substrate
+	mv    = (1-(i[3]/i[6]))*100  # Deposit/Substrate
+	mang  = (1-(i[4]/i[7]))*100
+	marea = (1-(ar1/ar2))*100
 	print "Configuration no. %i"%counter
 	print "p = %i, q = %i"%(i[0],i[1])
-	print "Substrate: %12.2f   %12.2f   %10.1f   %10.4f"\
-			%(i[2],i[3],i[4],ar1)
 	print "Deposit  : %12.2f   %12.2f   %10.1f   %10.4f"\
+			%(i[2],i[3],i[4],ar1)
+	print "Substrate: %12.2f   %12.2f   %10.1f   %10.4f"\
 			%(i[5],i[6],i[7],ar2)
 	print "Misfits  : %11.2f%%   %11.2f%%   %9.2f%%   %9.2f%%"\
 			%(mu,mv,mang,marea)
 	counter += 1
+	misfitList.append([mu,mv])
 
 print "CONSTRUCTING INTERFACE"
 #Construct big planes for Substrate and Deposit
@@ -3835,7 +3949,7 @@ if not skipStep1:
 		for i in bond:
 			iface = Interface(vecsDeposit[0],vecsSubstrate[0],\
   				     Dep,Sub,vecpair,i,fparam,False,False,\
-				     False,False)
+				     False,False,False)
 			s1=iface.sc1
 			s2=iface.sc2	
 			sca=(s1+s2)/2
@@ -3891,7 +4005,7 @@ for vecpair in resmat:
 					vecsSubstrate[confno],Dep,Sub,\
 					vecpair,i,wf,atomicRadius, nL,\
 					capAtmD, capAtmS,\
-					genHD,genHS)
+					genHD,genHS,poissonRatio)
 			s1=iface.sc1
 			s2=iface.sc2	
 			sca=(s1+s2)/2
@@ -3900,9 +4014,10 @@ for vecpair in resmat:
 			resultstmpS.append(s2)
 			resultstmpSD.append(sca)
 			i=confno
+			mfit = misfitList[i]
 			formatXYZ(iface,i,depCIF[0:-4],depMillerString,\
 					subCIF[0:-4],subMillerString,\
-					vecpairidx,\
+					vecpairidx,nL,mfit,\
 					writeGEN=False,\
 				        writeAIMS=True,\
 				        writeGULP=True,\
