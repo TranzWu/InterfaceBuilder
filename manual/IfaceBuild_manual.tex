@@ -1,0 +1,207 @@
+\documentclass[a4paper,12pt,oneside]{article}
+\usepackage{achemso}
+%\usepackage{graphicx} 
+\usepackage{epsfig}
+\usepackage{enumerate}
+\usepackage[normalem]{ulem}
+\graphicspath{{images/}}
+\begin{document}
+\title{Interface Builder ver. alpha - user manual}
+\author{Jakub Kami{\'n}ski
+\\
+Department of Mathematics,
+University of California Los Angeles \\
+}
+\maketitle
+\section{Introduction}
+This document provides manual for the Interface Builder. The program is still in
+development stage as new features are being constantly added. At this stage the
+focus is more on the underlying theory and algorithms, whereas end user
+experience is put to the background. Once the development part is considered
+complete, the complete user interface will be created. 
+
+The program execution is controlled with the external input file.  
+The compatibility between all the keywords combination has not been throughly 
+tested, and some might lead to error.
+
+The code does not feature exepction handling, therefore when it crashes it 
+returns
+reference to the part of the code where the error occurred. One such instance
+might be, for example, when Miller indices referring to the plane the does not
+exist (for the given structure) are specified  - the code will stop without
+giving detailed reason. This functionality will be added later.
+
+\section{Installation}
+\subsection{Python}
+The program is written in Python 2.7. It uses standard Python modules + Numpy. 
+In most modern Linux distributions and MacOS Python is pre-installed together
+with Numpy package. On Windows machines, Python and Numpy require additional
+installation.
+\subsection{Program execution}
+This manual will cover usage of Interface Builder in Unix based environments. 
+\noindent
+Before first execution, make sure that the script is executable:
+\begin{verbatim}
+chmode +x IfaceBuilder.py
+\end{verbatim}
+
+\noindent
+To execute the program, in the same directory issue:
+\begin{verbatim}
+./IfaceBuilder.py options.dat
+\end{verbatim}
+where \texttt{options.dat} is the file with options controling program
+execution.
+
+\section{Program options}
+The options to the program are supplied in \texttt{options.dat} file.
+\textbf{The structure of the \texttt{options.dat} is very rigid, order of
+options matter, all the supplied keywords are case sensitise.} Again, there are
+no error handling routines avaialble in the code, therefore mistakes
+in the
+options file will not be detected. More modern
+implementation allowing for more freedom will be done later, once the code will
+reach end of development cycle.
+
+\subsection{Structure of \texttt{options.dat} file}
+The rigid file structure is given as follows:
+\begin{verbatim}
+
+substrate     Si.cif      # CIF file for Substrate
+substrateIDX  100         # Miller indices for Substrate
+deposit       SiO2.cif    # CIF file for Deposit
+depositIDX    100         # Miller indices for Deposit
+maxArea       250         # Maximum area of lattices
+areaThresh    5.0         # Threshold for area misfit    [in %]
+vecThresh     5.0         # Threshold for vectors misfit [in %]
+angleThresh   5.0         # Threshold for angle misfit   [in %]
+capAtmSub     Cl          # Atom to cap the substrate exposed surface or None
+capAtmDep     H           # Atom to cap deposit exposed surface or None
+fparam        1           # Parameter f for scoring function
+nLayer        18.5        # Thickness of Deposit/Substrate slabs [A]
+noConf        8           # Desired number of configurations to return
+subAtRad      2.20        # Substrate atomic radius
+depAtRad      2.20        # Deposit atomic radius
+skipStep1     True       #Skip automatic generation of slabs distance True/False
+\end{verbatim}
+\noindent
+We will follow explaining each option one by one.
+\begin{itemize}
+\item{\texttt{substrate   Si.cif}}\\
+Name of the CIF file with substrate structure. \uline{The .cif file needs to be in the same directory as the IfaceBuilder.py}
+
+\item{\texttt{substrateIDX  100}}\\
+Miller indices of substrate plane, for instance \texttt{100, 110, 111, 212,...}
+
+\item{\texttt{deposit} and \texttt{depositIDX}}\\
+Same as \texttt{substrate} and \texttt{substrateIDX} but for Deposit.
+
+\item{\texttt{maxArea       250}}\\
+Maximum allowed interface area. In Angtroms. 
+
+\item{\texttt{areaThresh    5.0}, \texttt{vecThresh     5.0},
+\texttt{angleThresh   5.0}} \\
+Maximum thresholds for Area, Lattice vectors and Angles between lattice vectors
+given in \%. Decreasing those numbers will give fewer candidate structures, but with
+better fit. Decreasing those number will give give more candidate structure, but
+with bigger misfit. 
+
+\item{\texttt{capAtmSub     Cl}}\\
+Capping atom for the exposed surface of Substrate. Capping atoms are placed in
+the positions of the atoms that would be there in the true material. This
+implementation follows the new method to calculate the polar surface energies
+that is still under development, therefore this feature is also not very
+universal. \uline{Setting this option to \texttt{None} disables capping atoms.}
+
+\item{\texttt{capAtmDep     H}}\\
+Same as \texttt{capAtmSub} but for Deposit.
+
+\item{\texttt{fparam   1}}\\
+Parameter \texttt{f} for Scoring function
+
+\item{\texttt{nLayer  18.5}}\\
+Thickness of the Deposit and Substrate. In Angstroms. 
+Manipulating this value for non-polar materials, one can find exposed 
+surfaces that are "better"
+terminated than the other ones, i.e. having only one dangling bond instead of two. 
+
+\item{\texttt{noConf   8}}\\
+Limits the number of output structures to the given number. 
+If the given number is bigger than the actual number of structures, all the 
+structures will be printed. 
+
+\item{\texttt{subAtRad   2.20}}\\
+Atom radii of the atoms in Substrate. This is needed for the SCORING function. 
+
+\item{\texttt{depAtRad   2.20}}\\
+Atom radii of the atoms in Deposit. This is needed for the SCORING function.
+
+\item{\texttt{skipStep1  True}}\\
+Setting this option to \texttt{False} will use SCORING function to determine the
+optimal distance between the Substrate and Deposit slabs. It increases the time
+to output structures considerablt. 
+If it is set to \texttt{True}, the array with the desired distances between
+Substrate and Deposit slabs needs to be specified. Up to today, this is not
+possible to do from the level of the options file, but it requires manual
+inspection of \texttt{IfaceBuilder.py} script. This is not as hard as it seems.
+
+To do so, open the \texttt{IfaceBuilder.py} with text editor and go to line no.
+\texttt{3798}. The following variable should be defined there:
+\begin{verbatim}
+if skipStep1:
+        bondlist = [0.9,1.6,1.9,1.4,2.0]
+\end{verbatim}
+
+\noindent
+The numbers in the \texttt{bondlist} array are multipliers of average of atomic
+radii $r_{avg}=\frac{r_{Sub}+r_{Dep}}{2}$ ($r_{Sub}$ and $r_{Dep}$ given in
+\texttt{subAtRad} and \texttt{depAtRad}). Specifying, for instance, multiplier
+to \texttt{0.9} means that the Substrate and Deposit will be placed $0.9r_{avg}$
+apart. The length of \texttt{bondlist} depends on number of alignments, that 
+are created automatically, and can be found by running code once and noting the
+printed number.
+
+\end{itemize}
+
+\section{Output}
+The program outputs following directories. The \textit{main} directory:
+\begin{verbatim}
+SiO2100-Si100
+\end{verbatim}
+The name of this directory is created automatically based on the names of the
+CIF input files and specified Miller indices. In the example above, 
+it is interface between SiO$_2$(100) and Si(100). 
+
+The second output directory:
+\begin{verbatim}
+SCORE
+\end{verbatim}
+contains results from Scoring function analysis. The filenames follow the
+pattern:
+\begin{verbatim}
+OUTPUT-{D,S,SD}-{0,1,2...,n}.txt
+\end{verbatim}
+where \texttt{D,S,SD} corresponds to Deposit, Substrate, Substrate-and-Deposit
+respectively. The numbers from \texttt{0,1,2,...n} correspond to alignment
+number. 
+
+\subsection{Structure of the \textit{main} output directory}
+The main output directory contains subdirectories numbered from \texttt{0,...,n}
+where \texttt{n} is the number of alignments. 
+
+Each such directory contains files with the following extensions:
+\begin{itemize}
+\item{\texttt{.xyz} - cartesian coordinates of interface}
+\item{\texttt{.in}~  - coordinates in input file format for FHI-AIMS DFT code }
+\item{\texttt{.gin}  - coordinates in input file format for Gulp MM code }
+\item{\texttt{.idx} - miscellaneous information, such as number of atoms in
+comples:subsrtate:deposit; indices of atom of the exposed surfaces; area of the
+interface}
+\end{itemize}
+In each file name, lable \texttt{-D} or \texttt{-S} denotes that those are
+coordinates for Deposit or Substrate respectively (no such label means it is the
+whole interface). The number from \texttt{0,....,m} is the number of the given
+candidate structure. The upper limit \texttt{m} is given in \texttt{options.dat}
+file in \texttt{noConf} line. 
+
+\end{document}
