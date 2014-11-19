@@ -28,7 +28,7 @@
 from cctbx import crystal
 import json
 
-file = open("formated_groups.dat",'r')
+file = open("formated_groups-origins.dat",'r')
 
 jsonData = {}
 
