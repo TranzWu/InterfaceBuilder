@@ -1,6 +1,6 @@
 substrate     Si-opt.cif      # CIF file for Substrate
 substrateIDX  100         # Miller indices for Substrate
-deposit       SiO2.cif    # CIF file for Deposit
+deposit       SiO2.cif      # CIF file for Deposit
 depositIDX    100         # Miller indices for Deposit
 maxArea       250        # Maximum area of lattices
 areaThresh    5.0         # Threshold for area misfit    [in %]

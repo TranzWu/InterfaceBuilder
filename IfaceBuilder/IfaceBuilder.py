@@ -6,6 +6,7 @@ import math as m
 import os
 import decimal as dc
 import sys
+import json
 
 #
 # Interface Builder 
@@ -142,9 +143,8 @@ def ReadCIF(filename):
 	file.close()
 
 	for line in lines:
-		if line.find("_database_code_ICSD") >= 0:
-			line = line.split()
-			MatID = int(line[1])
+		if line.find("data") >= 0:
+			MatID = line
 
 		elif line.find("_cell_length_a") >= 0:
 			line = line.split()
@@ -169,26 +169,55 @@ def ReadCIF(filename):
 		elif line.find("_cell_angle_gamma") >= 0:
 			line = line.split()
 			gamma = CheckParentheses(line[1])
+		elif line.find("_symmetry_space_group_name_H-M") >= 0:
+			SGsymbol = extractSpaceGroup(line)
 
 	f2cmat = FracToCart(cellA,cellB,cellC,alpha,beta,gamma)
+	print "SYMBOL  ",SGsymbol
 
-	# READ ATOM SYMMETRY POSITIONS
-	# Find index of the the beginning of atom positions
-	ib = lines.index("_symmetry_equiv_pos_as_xyz\n")
-	# Find end of atom positions
-	ie = lines[ib+1:].index("loop_\n")
-	# Get atom positions
-	atompos = lines[ib+1:ib+ie+1]
+	# READ ATOM SYMMETRY POSITION CORRESPONDING TO SPACE GROUP
+	sgInput = open('spacegroups.json','r')
+	sgData = json.load(sgInput)
+	try:
+		atompos = sgData[SGsymbol]
+	except KeyError:
+		print "Unrecognized spacegroup symbol read from CIF file %s"%SGsymbol
+		exit()
 
 	# READ ATOM FRACTIONAL COORDINATES
 	# Find index of the the beginning of atom fractional coordinates
-	ib = lines.index("_atom_site_attached_hydrogens\n")
-	# Find end of atom positions
-	ie = -1 # TODO we assume that fractional coordinates are 
-		# always given at the end of the CIF file
-	        
+	try:
+		# Unix line ending
+		ib = lines.index("_atom_site_occupancy\n")
+	except ValueError:
+		# Windows line ending
+		ib = lines.index("_atom_site_occupancy\r\n")
+
+	# Sometimes in happens in cif (usually from ISCD) that after 
+	# _atom_site_occupancy line there is _atom_site_attached_hydrogens
+	# lable. Remove it.
+	if (lines[ib+1] == ("_atom_site_attached_hydrogens\n")) or \
+           (lines[ib+1] == ("_atom_site_attached_hydrogens\r\n")):
+		   ib = ib + 1
+		
 	# Get atom positions
-	frapos = lines[ib+1:ie]
+	# We don't know how many atoms ther is the structure
+	# Read them unitl keyworld "loop", or line begining with "_"
+	# or line begining with "#" or end of file is encountered
+
+	frapos = []
+	while 1:
+		try:
+			line = lines[ib+1]
+		except IndexError:
+			break # end of file reached 
+
+		if (line[0:4] != "loop") and (line[0] != "_") \
+		   and (line[0] != "#"):
+			frapos.append(line)
+			ib += 1
+		else:
+			break
 
 	# Now, knowing fractional coordinates and the symmetry positions, 
 	# build fractional xyz coordinates.
@@ -200,9 +229,21 @@ def ReadCIF(filename):
 	for atom in frapos:
 		atom = atom.split()
 		symbol = atom[0][:-1]
-		x = float(CheckParentheses(atom[4]))
-		y = float(CheckParentheses(atom[5]))
-		z = float(CheckParentheses(atom[6]))
+		# Sometimes lines in the cif file has the format:
+		# "Si1 Si0+ 8 a 0. 0. 0. 0.54(1) 1. 0"
+		# sometimes:
+		# "Ta1      2 a   0.00000   0.00000   0.00000 1.0"
+		# Discover which one it is by checking if the second
+		# element is equal to the first
+		testElem = atom[1]
+		if atom[1][:-2] == symbol:
+			atomIndex = 4
+		else:
+			atomIndex = 3
+		print "ATOMINDEX",atomIndex
+		x = float(CheckParentheses(atom[atomIndex]))
+		y = float(CheckParentheses(atom[atomIndex+1]))
+		z = float(CheckParentheses(atom[atomIndex+2]))
 
 		fracoord[ii,0] = x
 		fracoord[ii,1] = y
@@ -221,13 +262,14 @@ def ReadCIF(filename):
 		for pos in atompos: #For each element in atompos, convert it 
 			            # to fraction, multiply by fractional 
 				    # coordinate and save to positions array
-			pos = pos.split()
+#			pos = pos.split()
+			pos = pos.split(",") # For group
 			coordtmp = []
-			for elem in pos[1:]:
-
+#			for elem in pos[1:]:
+			for elem in pos:     # For group
 				# Read symmetry operation and constuct 
 				# fractional coordiante
-				
+
 				s,o = ReadSym(elem)
 
 				coord = s[0]*o[0]*atom[0] + \
@@ -260,7 +302,7 @@ def ReadCIF(filename):
 			if elem[0] == 0:
 				newrow = np.array(elem)
 				newrow[0] += 1
-				diff= CmpRows(positions,newrow)
+				diff = CmpRows(positions,newrow)
 				if diff:
 					positions = \
 						np.vstack([positions,newrow])
@@ -587,6 +629,35 @@ def CheckParentheses(input):
 		input = input[:i]
 
 	return float(input)
+
+def extractSpaceGroup(symbol):
+	# Extract spacegroup symbol from CIF file line
+	symbol = symbol.strip("_symmetry_space_group_name_H-M")
+	symbol = symbol.strip() # strip any leading spaces
+	symbol = symbol.strip("'") # strip quote signs
+	symbol = symbol.strip('"') # strip double quotes (just in case)
+	symbol = symbol.split()
+	symbolOut = ""
+	# In the case the symbol is given with white space, i.e. "F M -3 M"
+	for i in symbol:
+		symbolOut += i
+	symbolOut = symbolOut.capitalize()
+
+	# In ISCD "S" or ":S" extension on the end of the symbol is equivalent
+	# to :1 notation for origin choice for space groups with two origins,
+	# .i.e "F d -3 m S"
+	# Our notoations follows :1 :2 extension for different origins and 
+	# :R :H for different axes, so convert everything to this notation
+
+	if symbolOut[-1] == "s": 
+		symbolOut = symbolOut[:-1] +":1"
+	
+	if symbolOut[-2:] == ":s": 
+		symbolOut = symbolOut[:-2] +":1"
+
+	# TODO: What are other convetions?
+
+	return symbolOut
 
 def unique2(a,labels):
 	# Remove duplicate elements from array keeping it order
@@ -3751,7 +3822,6 @@ Dep.construct()
 Dep.plane()
 Dep.initpvecNEW()
 Dep.primitivecell()
-
 
 print 
 print 
