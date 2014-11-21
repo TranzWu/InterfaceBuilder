@@ -173,7 +173,7 @@ def ReadCIF(filename):
 			SGsymbol = extractSpaceGroup(line)
 
 	f2cmat = FracToCart(cellA,cellB,cellC,alpha,beta,gamma)
-	print "SYMBOL  ",SGsymbol
+	print "SPACE GROUP: ",SGsymbol
 
 	# READ ATOM SYMMETRY POSITION CORRESPONDING TO SPACE GROUP
 	sgInput = open('spacegroups.json','r')
@@ -654,6 +654,16 @@ def extractSpaceGroup(symbol):
 	
 	if symbolOut[-2:] == ":s": 
 		symbolOut = symbolOut[:-2] +":1"
+	
+	# Intel is using follwing convetion in their MadeA software to
+	# label group with different origins
+	# FD-3MO1 - origin 1; FD-3MO2 - origin 2
+
+	if symbolOut[-2:] == "o1":
+		symbolOut = symbolOut[:-2] +":1"
+
+	if symbolOut[-2:] == "o2":
+		symbolOut = symbolOut[:-2] +":2"
 
 	# TODO: What are other convetions?
 
@@ -3785,16 +3795,21 @@ def RecipLattice(a1,a2,a3):
 
 
 
+#########################################
+#					#
+#					#
+#          Start program 		#
+#					#
+#					#
+#########################################
+
+
+# Read input
 subCIF, subMillerString, \
 depCIF, depMillerString, \
 maxArea, areaThres, vecThres, angleThres,\
 capAtmS, capAtmD, fparam, nL, nConf, subAtRad, depAtRad,\
 skipStep1, poissonRatio = readInput(inputFile)
-
-print subCIF, subMillerString,\
-depCIF, depMillerString,\
-maxArea, areaThres, vecThres, angleThres,\
-capAtmS, capAtmD, fparam, nConf 
 
 #MATERIAL 1
 nbulk=1
@@ -3987,7 +4002,9 @@ wflist = [fparam]  # list of f-parameters for Scoring function
 
 bondlist = []      # list for Substrate-Deposit optimal sepration length
 if skipStep1:
-	bondlist = [0.9,1.6,1.9,1.4,2.0]
+	for i in resmat:
+		bondlist.append(1.2)
+	#	bondlist = [0.9,1.6,1.9,1.4,2.0]
 
 # Start generating structures
 # Step 1: Optimal distance between Substrate and Deposit 
