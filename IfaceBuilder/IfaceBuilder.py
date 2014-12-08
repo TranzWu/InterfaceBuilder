@@ -3953,7 +3953,7 @@ if (len(avecsDep) != 1) or (len(avecsSub) != 1):
 		for j in range(len(avecsDep)):
 			prod = np.dot(avecsSub[i],avecsDep[j])
 			nS = np.linalg.norm(avecsSub[i])
-			nD = np.linalg.norm(avecsDep[i])
+			nD = np.linalg.norm(avecsDep[j])
 			cosphi = prod/(nS*nD)
 			cosphi = round(cosphi,4)
 			resmat[ii,0] = m.acos(cosphi)
