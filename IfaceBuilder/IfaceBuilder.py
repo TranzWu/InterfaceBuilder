@@ -1426,7 +1426,7 @@ class Surface:
 				if abs(dau) == (nu**2)/2: primitive = True
 
 				if primitive: break
-				i += 1
+			i += 1
 
 		# Search for 2nd primitive vector
 		linear = True
@@ -1467,7 +1467,7 @@ class Surface:
 						linear = False
 	
 				if primitive and (not linear): break
-				i += 1
+			i += 1
 
 		# Reduce a and b
 		self.a, self.b = reduction(self.a, self.b)
