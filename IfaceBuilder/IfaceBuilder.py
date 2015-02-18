@@ -636,9 +636,18 @@ def extractSpaceGroup(symbol):
 	symbol = symbol.strip() # strip any leading spaces
 	symbol = symbol.strip("'") # strip quote signs
 	symbol = symbol.strip('"') # strip double quotes (just in case)
+
+        # In case symbol contains "_", i.e "I4_1/amd"
+        if symbol.find("_") > 0:
+                tmp = ""
+                for i in symbol:
+                        if i != "_":
+                                tmp += i
+                symbol = tmp
+
+	# In the case the symbol is given with white space, i.e. "F M -3 M"
 	symbol = symbol.split()
 	symbolOut = ""
-	# In the case the symbol is given with white space, i.e. "F M -3 M"
 	for i in symbol:
 		symbolOut += i
 	symbolOut = symbolOut.capitalize()
@@ -1821,10 +1830,11 @@ class Interface:
 		self.vecDep = vecDep.copy() # vectors of defining deposit surface
 		self.vecSub = vecSub.copy() # vectors defining substrate surface
 		self.Depavecs = Deposit.avecs.copy() # Deposit anticipatory vectors
-		self.Subavecs = Substrate.avecs.copy() #Substrate anticipatory vectors	
+		self.Subavecs = Substrate.avecs.copy() # Substrate anticipatory vectors	
 		# Dictionary with vectors for all the atom types
 		self.Depavecsall = Deposit.avecsall.copy()
 		self.Subavecsall = Substrate.avecsall.copy()
+		# wbond - parameter for scoring function
 
 
 		# Prepare xyz output for calculations
@@ -2660,9 +2670,9 @@ class Interface:
 		lv = np.linalg.norm(vector)
 #		bfrac = covrad/lv
 		# end TEST 
-		bfrac = 0.9
+		#bfrac = 0.9
 		vector=vector*bfrac
-		vector[2]=1.8024400000000007
+		#vector[2]=1.8024400000000007
 
 		
 		# Now, move the deposit according the resulting anticipatory 
@@ -3186,7 +3196,7 @@ class Interface:
 		natms = len(idx1)
 		dist = (np.linalg.norm(avecs1[0])+np.linalg.norm(avecs2[0]))/2
 	##	print "DIST IN SCORE7", dist
-		dist=2.20
+		dist = 2.20
 		dist = atomicRadius
 		# MAKE THE REFERENCE DISTANCE THE LENGTH OF ALIGNEMENT VECTOR
 
@@ -4035,7 +4045,7 @@ if not skipStep1:
 		fSD=open("SCORE/DIST/OUTPUT-SD-%i.txt"%vecpairidx,'w')
 		for i in bond:
 			iface = Interface(vecsDeposit[0],vecsSubstrate[0],\
-  				     Dep,Sub,vecpair,i,fparam,False,False,\
+  				     Dep,Sub,vecpair,i,fparam,atomicRadius,False,\
 				     False,False,False)
 			s1=iface.sc1
 			s2=iface.sc2	
@@ -4059,7 +4069,7 @@ if not skipStep1:
 		fSD.close()
 
 		vecpairidx += 1
-
+print "BOND LIST",bondlist
 # Step 2: Generate configurations
 # For every anticipatory vector pair in "resmat" generate number of structures
 # given in "confnor", setting the spacing between them to one from "bondlist" 
