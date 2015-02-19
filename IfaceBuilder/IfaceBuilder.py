@@ -363,6 +363,12 @@ def ReadCIF(filename):
 		iatlab += 1 # next atom
 
 	positions = np.dot(positions,f2cmat)
+	#TODO: check if this is always true.
+	# This is done for the cases when if CIF file the coordinates of first atom are different from 0.0 0.0 0.0
+	# Such cases prevents proper rotations on def plane, where the desired plane doesnt have z=0
+	shift = positions[0]
+	positions -= positions[0]
+	#end TODO
 	return MatID,f2cmat,atoms,positions,atomlabels
 
 def CmpRows(mat1,vector):
