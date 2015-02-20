@@ -759,6 +759,7 @@ class Surface:
 		                       # and atome below
 		self.avecs = np.array((0,0,0)) # anticpatory vectors
 		self.nneigh = 0 # number of nearst neigbours
+		self.exists = False
 
 	def bulk(self,ncells):
 		# 
@@ -1392,6 +1393,9 @@ class Surface:
 		#   If any of those conditions is met, the pair of vectors 
 		#   are the primitive vectors for this lattice
 
+		# Primitive vectors not found yet
+		self.exists = False
+
 		# Shift coordinates so that 1st atom is in origin
 		orgsave = self.planepos[0]
 		self.planepos -= self.planepos[0]
@@ -1408,9 +1412,6 @@ class Surface:
 
 		nu = np.linalg.norm(self.u)
 		nv = np.linalg.norm(self.v)
-		# Rounded values
-		nur = round(np.linalg.norm(self.u),3)
-		nvr = round(np.linalg.norm(self.v),3)
 
 		primitive = False
 
@@ -1423,17 +1424,17 @@ class Surface:
 			if self.planeatms[idx[i]] == self.planeatms[0]:
 				self.a = self.planepos[idx[i]]
 	
-				na = round(np.linalg.norm(self.a),3)
+				na = np.linalg.norm(self.a)
 	
 				# 1st condtition
-				if nur >= na:
-					ma = nur%na
+				if nu >= na:
+					ma = nu%na
 				else:
-					ma = na%nur
+					ma = na%nu
 	
 #				print nu,na,ma
 	
-				if ma == 0.0: primitive = True
+				if round(ma,6) == 0.0: primitive = True
 	
 				# 2nd condition
 				dau = np.dot(self.a,self.u)
@@ -1454,15 +1455,15 @@ class Surface:
 			if self.planeatms[idx[i]] == self.planeatms[0]:
 				self.b = self.planepos[idx[i]]
 	
-				nb = round(np.linalg.norm(self.b),3)
+				nb = np.linalg.norm(self.b)
 	
 				# 1st condtition
 				if nvr >= nb:
-					mb = nvr%nb
+					mb = nv%nb
 				else:
-					mb = nb%nvr
+					mb = nb%nv
 	
-				if mb == 0.0 : primitive = True
+				if round(mb,6) == 0.0 : primitive = True
 	
 				# 2nd condition
 				dbv = np.dot(self.b,self.v)
@@ -1484,8 +1485,13 @@ class Surface:
 				if primitive and (not linear): break
 			i += 1
 
-		# Reduce a and b
-		self.a, self.b = reduction(self.a, self.b)
+		if primitive:
+			self.exists = True
+			# Reduce a and b
+			self.a, self.b = reduction(self.a, self.b)
+		else:
+			print "COULDN'T FIND PRIMITIVE VECTORS"
+			exit()
 
                 print "REDUCED VECTORS"
                 print "A", self.a, np.linalg.norm(self.a)
