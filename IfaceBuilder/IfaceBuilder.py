@@ -1128,89 +1128,96 @@ class Surface:
 				idxlistblk.append(idx)
 			idx += 1
 
-		# Crate anticipatory vectors
-		# Find all atoms lying above the plane
-		idxabove = posrot[:,2]>0
-		posabove = posrot[idxabove]
+		# Check if plane exists:
+		if len(idxlist) != 0:
+			self.exists = True
 
-		# Labels of atoms on surface only
-		self.planeatms = []
-		for i in idxlist:
-			self.planeatms.append(self.atoms[i])
-
-		uqatoms,uqidx,uqidxbulk = self.__finduqatoms(self.planeatms,\
-				                   posrot,idxlist)
+		if self.exists:
+			# Crate anticipatory vectors
+			# Find all atoms lying above the plane
+			idxabove = posrot[:,2]>0
+			posabove = posrot[idxabove]
 	
-		# Find anticipatory vectors for each unique atom on the plane
-		avecslist = []
-		for idx in uqidxbulk:
-			avecsitem = self.__anticipatoryvecs\
-   				     (posrot[idx],posabove)
-			avecslist.append(avecsitem)
+			# Labels of atoms on surface only
+			self.planeatms = []
+			for i in idxlist:
+				self.planeatms.append(self.atoms[i])
 
-		self.avecs = avecslist[0]
-		# Create a dictionary avecall to hold all anticipatory
-		# vectors assiciated to given atom type. This will be 
-		# usefull for scroing function
-		self.avecsall = {}
-		for i in range(len(uqatoms)):
-			lab = uqatoms[i]
-			ii = avecslist[i]
-			self.avecsall[lab]=ii
-
-
-	#	self.avecs = self.__anticipatoryvecs(posrot[idxlist[0]],\
-	#			                     posabove)
-
-		# Find the nearest neighbours of the atom in bulk
-#		self.nneigh = self.__anticipatoryvecs(posrot[0],\
-#	   			    posrot[1:],neighonly=True)
-
-		# Find nearest unique atoms in the whole bulk 
-		# This is needed to find nearest neigbours of each atom type
-		uqatoms,uqidx,uqidxbulk = self.__finduqatoms(self.atoms,\
-				                   posrot,\
-						   idxlist=range(len(posrot)))
-
-		neighlist = []
-		for i in uqidxbulk:
-			# Construct array with poistion without atom i
-			postmpa = posrot[:i]
-			postmpb = posrot[i+1:]
-			postmp  = np.concatenate((postmpa,postmpb))
-			nneighat = self.__anticipatoryvecs(posrot[i],\
-	   				    postmp,neighonly=True)
-			neighlist.append(nneighat)
-
-		# Create dictionary that as a key will have label 
-		# of unique atom and as value, number of its nearest 
-		# neighbors
-		self.uqneigh = {}
-		for i in range(len(uqatoms)):
-			lab = uqatoms[i]
-			ii = neighlist[i]
-			self.uqneigh[lab]=ii
-		self.nneigh = neighlist[0]
+			uqatoms,uqidx,uqidxbulk = self.__finduqatoms(self.planeatms,\
+					                   posrot,idxlist)
 		
-		# Revert to orginal origin of atom coordinates
-		self.positions = self.positions + self.origin
+			# Find anticipatory vectors for each unique atom on the plane
+			avecslist = []
+			for idx in uqidxbulk:
+				avecsitem = self.__anticipatoryvecs\
+   					     (posrot[idx],posabove)
+				avecslist.append(avecsitem)
+	
+			self.avecs = avecslist[0]
+			# Create a dictionary avecall to hold all anticipatory
+			# vectors assiciated to given atom type. This will be 
+			# usefull for scroing function
+			self.avecsall = {}
+			for i in range(len(uqatoms)):
+				lab = uqatoms[i]
+				ii = avecslist[i]
+				self.avecsall[lab]=ii
 
-		# Create surface coordinates
-		self.planepos = posrot[idxlist]
-		
-		# Create surace coordiantes including atoms below it
-		# Make sure that surface atoms are first in the array
-		idxlistblk = idxlist + idxlistblk
-		self.planeposblk = posrot[idxlistblk]
 
-		# Labels of atoms on surface and below
-		self.planeatmsblk = []
-		for i in idxlistblk:
-			self.planeatmsblk.append(self.atoms[i])
+		#	self.avecs = self.__anticipatoryvecs(posrot[idxlist[0]],\
+		#			                     posabove)
+	
+			# Find the nearest neighbours of the atom in bulk
+	#		self.nneigh = self.__anticipatoryvecs(posrot[0],\
+#		   			    posrot[1:],neighonly=True)
+	
+			# Find nearest unique atoms in the whole bulk 
+			# This is needed to find nearest neigbours of each atom type
+			uqatoms,uqidx,uqidxbulk = self.__finduqatoms(self.atoms,\
+					                   posrot,\
+							   idxlist=range(len(posrot)))
+	
+			neighlist = []
+			for i in uqidxbulk:
+				# Construct array with poistion without atom i
+				postmpa = posrot[:i]
+				postmpb = posrot[i+1:]
+				postmp  = np.concatenate((postmpa,postmpb))
+				nneighat = self.__anticipatoryvecs(posrot[i],\
+		   				    postmp,neighonly=True)
+				neighlist.append(nneighat)
 
-		# Translate plane so coordinate z=0	
-#		if abs(self.planepos[:,2]).all > 0:
-#			self.planepos[:,2] -= self.planepos[:,2]
+			# Create dictionary that as a key will have label 
+			# of unique atom and as value, number of its nearest 
+			# neighbors
+			self.uqneigh = {}
+			for i in range(len(uqatoms)):
+				lab = uqatoms[i]
+				ii = neighlist[i]
+				self.uqneigh[lab]=ii
+			self.nneigh = neighlist[0]
+			
+			# Revert to orginal origin of atom coordinates
+			self.positions = self.positions + self.origin
+	
+			# Create surface coordinates
+			self.planepos = posrot[idxlist]
+			
+			# Create surace coordiantes including atoms below it
+			# Make sure that surface atoms are first in the array
+			idxlistblk = idxlist + idxlistblk
+			self.planeposblk = posrot[idxlistblk]
+	
+			# Labels of atoms on surface and below
+			self.planeatmsblk = []
+			for i in idxlistblk:
+				self.planeatmsblk.append(self.atoms[i])
+	
+			# Translate plane so coordinate z=0	
+#			if abs(self.planepos[:,2]).all > 0:
+#				self.planepos[:,2] -= self.planepos[:,2]
+
+		#end if self.exists
 
 	def __finduqatoms(self,labels,pos,idxlist):
 		# Routine to find unique types of atoms from set of
@@ -1458,7 +1465,7 @@ class Surface:
 				nb = np.linalg.norm(self.b)
 	
 				# 1st condtition
-				if nvr >= nb:
+				if nv >= nb:
 					mb = nv%nb
 				else:
 					mb = nb%nv
@@ -1489,13 +1496,13 @@ class Surface:
 			self.exists = True
 			# Reduce a and b
 			self.a, self.b = reduction(self.a, self.b)
-		else:
-			print "COULDN'T FIND PRIMITIVE VECTORS"
-			exit()
-
-                print "REDUCED VECTORS"
-                print "A", self.a, np.linalg.norm(self.a)
-                print "B", self.b, np.linalg.norm(self.b)
+#		else:
+#			print "COULDN'T FIND PRIMITIVE VECTORS"
+#			exit()
+#
+#                print "REDUCED VECTORS"
+#                print "A", self.a, np.linalg.norm(self.a)
+#                print "B", self.b, np.linalg.norm(self.b)
 		
 		# Shift coordinates back to orginals positions 
 		self.planepos += orgsave
@@ -3844,7 +3851,13 @@ Sub.bulk(nbulk)
 
 Sub.construct()
 Sub.plane()
+if not Sub.exists:
+        print "Given plane for Substrate does not exists!"
+        exit()
 Sub.initpvecNEW()
+if not Sub.exists:
+        print "Couldn't find primitive vectors for Substrate"
+        exit()
 Sub.primitivecell()
 
 print
@@ -3857,7 +3870,13 @@ Dep = Surface(transM1,positions1,atoms1,Miller1)
 Dep.bulk(nbulk)
 Dep.construct()
 Dep.plane()
+if not Dep.exists:
+        print "Given plane for Deposit does not exists!"
+        exit()
 Dep.initpvecNEW()
+if not Dep.exists:
+        print "Couldn't find primitive vectors for Deposit"
+        exit()
 Dep.primitivecell()
 
 print 
@@ -3910,6 +3929,19 @@ for i in range(len(p)):
 print "TOTAL NUMBER OF COMBINATIONS FOR SET OF p and q PAIRS: %i"%(totalcomb)
 print "TOTAL NUMBER OF FITTED STRUCTURES FOUND: %i"%(fitcount)
 print "NUMBER OF UNIQUE MATCHES FOUND: %i"%(len(resultlist))
+
+#Didn't find any match
+if len(resultlist) == 0: 
+        print 
+        print "********************************************************" 
+        print "Couldn't find any matching superlattices." 
+        print "Materials : %s(%s) - %s(%s) "%(subCIF[0:-4],subMillerString, 
+                                              depCIF[0:-4],depMillerString) 
+        print "Try increasing the max. area or loosening the thresholds" 
+        print "********************************************************" 
+        print
+        exit()
+
 print "RESULTS:"
 print "                 Vecx[A]         Vecy[A]    Angle[deg]  Area[A^2]"
 counter = 0
