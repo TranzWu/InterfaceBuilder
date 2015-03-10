@@ -124,6 +124,37 @@ def getMillerFromString(millerString):
 	
 	return out
 
+def createMillerList(maxMillerInd):
+        # create a list that contains strings for all the possible Miller indices
+        # from "0 0 1" to "maxMillerInd maxMillerInd maxMillerInd"
+
+        MillerList = list() 
+
+	# If the length of maxMillerInd is 3 (i.e. 100, 111, 212) 
+	# it means we are dealing with the indyvidual Miller orienation,
+	# hence don't generate it, just return it value packed in the list
+	if len(maxMillerInd) >= 3:
+		MillerList.append(maxMillerInd)
+		return MillerList
+	
+	# Generate all possible combinations up to specified Miller index 
+        x1 = 0
+        x2 = 0
+        x3 = 0
+	maxMillerInd = int(maxMillerInd)
+        while x1 <= maxMillerInd:
+                x2 = 0
+                while x2 <= maxMillerInd:
+                        x3 = 0
+                        while x3 <= maxMillerInd:
+                                MillerList.append(str(x1)+str(x2)+str(x3))
+                                x3 = x3+1
+                        x2 = x2+1
+                x1 = x1+1
+
+        MillerList.remove("000") # we cannot have "0 0 0"
+
+        return MillerList
 
 def ReadCIF(filename):
 	# Reads information from CIF file:
@@ -3834,384 +3865,406 @@ def RecipLattice(a1,a2,a3):
 
 
 # Read input
-subCIF, subMillerString, \
-depCIF, depMillerString, \
+subCIF, subMiller, \
+depCIF, depMiller, \
 maxArea, areaThres, vecThres, angleThres,\
 capAtmS, capAtmD, fparam, nL, nConf, subAtRad, depAtRad,\
 skipStep1, poissonRatio = readInput(inputFile)
 
-#MATERIAL 1
-nbulk=1
-print "Constructing bulk Substrate"
 i,transM,atoms,positions,atomtyp=ReadCIF(subCIF)
-Miller = getMillerFromString(subMillerString)
-
-Sub=Surface(transM,positions,atoms,Miller)
-Sub.bulk(nbulk)
-
-Sub.construct()
-Sub.plane()
-if not Sub.exists:
-        print "Given plane for Substrate does not exists!"
-        exit()
-Sub.initpvecNEW()
-if not Sub.exists:
-        print "Couldn't find primitive vectors for Substrate"
-        exit()
-Sub.primitivecell()
-
-print
-#MATERIAL 2
-print "Constructing bulk Deposit"
 i1,transM1,atoms1,positions1,atomtyp1=ReadCIF(depCIF)
-Miller1 = getMillerFromString(depMillerString)
 
-Dep = Surface(transM1,positions1,atoms1,Miller1)
-Dep.bulk(nbulk)
-Dep.construct()
-Dep.plane()
-if not Dep.exists:
-        print "Given plane for Deposit does not exists!"
-        exit()
-Dep.initpvecNEW()
-if not Dep.exists:
-        print "Couldn't find primitive vectors for Deposit"
-        exit()
-Dep.primitivecell()
+subMillerList = createMillerList(subMiller)
+depMillerList = createMillerList(depMiller)
 
-print 
-print 
-print 
-print "Matching superlattices" 
-print
+failedResults=[]
 
-# ASSUME THAT P IS FOR DEPOSIT, Q FOR SUBSTRATE
-p,q=AreaMatch2(Dep.primarea,Sub.primarea, maxArea, areaThres)
-print "List of p:"
-print p
-print "List of q:"
-print q
+for subMillerString in subMillerList:
+	for depMillerString in depMillerList:
+		 
+		#MATERIAL 1
+		nbulk=1
+		print "Constructing bulk Substrate"
+		Miller = getMillerFromString(subMillerString)
 
-fitcount = 0 
-totalcomb = 0 
-resultlist=[] 
-vecsDeposit = []
-vecsSubstrate = []
+		Sub=Surface(transM,positions,atoms,Miller)
+		Sub.bulk(nbulk)
 
-for i in range(len(p)):
-	vecsD = Superlattice(Dep.a,Dep.b,p[i])
-	vecsS = Superlattice(Sub.a,Sub.b,q[i])
-	for ii in vecsD:
-		for jj in vecsS: 
-			fit,u1,v1,p1,u2,v2,p2 = SuperlatticeMatch(ii,jj,\
-					         vecThres, angleThres)
-			if fit:
-#				u1,v1,p1,ar1 = SuperlatticeParams(ii)
-#				u2,v2,p2,ar2 = SuperlatticeParams(jj)
-				result=[p[i],q[i],u1,v1,p1,u2,v2,p2]
+		Sub.construct()
+		Sub.plane()
+		if not Sub.exists:
+			print "Given plane for Substrate does not exists!"
+			exit()
+		Sub.initpvecNEW()
+		if not Sub.exists:
+			print "Couldn't find primitive vectors for Substrate"
+			exit()
+		Sub.primitivecell()
 
-				if resultlist == []:
-					resultlist.append(result)
-					vecsSubstrate.append(jj)
-					vecsDeposit.append(ii)
-				else:
-					duplicate = CheckListDuplicates\
-						(resultlist,result,\
-						 2,3,4,5,6,7)
-					if not duplicate:
-						resultlist.append(result)
-						vecsSubstrate.append(jj)
-						vecsDeposit.append(ii)
-
-				fitcount += 1
-			totalcomb += 1
-
-print "TOTAL NUMBER OF COMBINATIONS FOR SET OF p and q PAIRS: %i"%(totalcomb)
-print "TOTAL NUMBER OF FITTED STRUCTURES FOUND: %i"%(fitcount)
-print "NUMBER OF UNIQUE MATCHES FOUND: %i"%(len(resultlist))
-
-#Didn't find any match
-if len(resultlist) == 0: 
-        print 
-        print "********************************************************" 
-        print "Couldn't find any matching superlattices." 
-        print "Materials : %s(%s) - %s(%s) "%(subCIF[0:-4],subMillerString, 
-                                              depCIF[0:-4],depMillerString) 
-        print "Try increasing the max. area or loosening the thresholds" 
-        print "********************************************************" 
-        print
-        exit()
-
-print "RESULTS:"
-print "                 Vecx[A]         Vecy[A]    Angle[deg]  Area[A^2]"
-counter = 0
-nResults = len(resultlist)
-misfitList =[]
-for i in resultlist:
-	
-	ar1 = i[2]*i[3]*m.sin(i[4]*m.pi/180)
-        ar2 = i[5]*i[6]*m.sin(i[7]*m.pi/180)
-
-	mu    = (1-(i[2]/i[5]))*100  # Deposit/Substrate
-	mv    = (1-(i[3]/i[6]))*100  # Deposit/Substrate
-	mang  = (1-(i[4]/i[7]))*100
-	marea = (1-(ar1/ar2))*100
-	print "Configuration no. %i"%counter
-	print "p = %i, q = %i"%(i[0],i[1])
-	print "Deposit  : %12.2f   %12.2f   %10.1f   %10.4f"\
-			%(i[2],i[3],i[4],ar1)
-	print "Substrate: %12.2f   %12.2f   %10.1f   %10.4f"\
-			%(i[5],i[6],i[7],ar2)
-	print "Misfits  : %11.2f%%   %11.2f%%   %9.2f%%   %9.2f%%"\
-			%(mu,mv,mang,marea)
-	counter += 1
-	misfitList.append([mu,mv])
-
-print "CONSTRUCTING INTERFACE"
-#Construct big planes for Substrate and Deposit
-nbulk2 = 8
-Sub.bulk(nbulk2)
-Sub.construct()
-Sub.plane()
-
-
-#ii=0
-#for i in Sub.planepos:
-#	print Sub.planeatms[ii],i[0],i[1],i[2]
-#	ii+=1
-
-
-Dep.bulk(nbulk2)
-Dep.construct()
-Dep.plane()
-
-#ii=0
-#for i in Dep.planeposblk:
-#	print Dep.planeatmsblk[ii],i[0],i[1],i[2]
-#	ii+=1
-
-
-
-
-# Sort the Substrate-Deposit alignemnt by checking coolinarity of
-# pairs of anticipatory vectors.
-avecsSub = Sub.avecs.copy()
-avecsDep = Dep.avecs.copy()
-ii = 0
-# If there is only ona pair of anticipatory vectors,
-# it means those are vectors pointing straight up, eg. [0,0,z].
-# Indicate it, by giving them negative labels.
-if (len(avecsDep) != 1) or (len(avecsSub) != 1):
-	resmat = np.zeros(((len(avecsDep)*len(avecsSub)),3))
-	for i in range(len(avecsSub)):
-		for j in range(len(avecsDep)):
-			prod = np.dot(avecsSub[i],avecsDep[j])
-			nS = np.linalg.norm(avecsSub[i])
-			nD = np.linalg.norm(avecsDep[j])
-			cosphi = prod/(nS*nD)
-			cosphi = round(cosphi,4)
-			resmat[ii,0] = m.acos(cosphi)
-			resmat[ii,1] = i  
-			resmat[ii,2] = j 
-			ii += 1
-	resmat = CleanMatElements(resmat)
-	# Sort the results and pick the smallest dot product
-	resmat = resmat[np.argsort(resmat[:,0])]
-	# Create additional alignment - where vectors are pointing straight up
-	resmat = np.vstack([np.array((0.0,-1.0,-1.0)),resmat])
-
-else:
-	resmat = np.array([[0.0,-1.0,-1.0]])
-
-print
-print "****************************"
-print "Found %i possible alignments"%len(resmat) 
-print "****************************"
-print
-
-#bondl=[0.9,1.6,1.9,1.4,2.0]
-#resmat=np.array([[0.0,-1.0,-1.0]])
-#resmat=np.array([[0.0,1.0,1.0]])
-#resmat=np.array([resmat[2]])
-
-os.system("mkdir -p SCORE/DIST")
-
-# if user asked for more results than there actually is, limit it.
-if nConf > nResults: nConf = nResults
-
-# Initialize variables
-vecpairidx = 0   # counter for anticicipatory vector pairs
-bond = np.arange(0.5,3.0,0.1) # range of bond lengths to scan for search of 
-			      # optimal Substrate-Deposit separation
-confnor = range(nConf) # number of configurations to consider
-#fparam = 1         # f-parameter for scoring function
-genHD = False       # generate hydrogens on Deposit?
-genHS = False      # generate hydrogens on Substrate?
-#capAtmS = "Cl"
-#capAtmD = "H"
-atomicRadius = (subAtRad + depAtRad)/2 
-wflist = [fparam]  # list of f-parameters for Scoring function
-#skipStep1 = True # option to skip Step 1. You must specify bondlist 
-#                   # by hand below
-
-bondlist = []      # list for Substrate-Deposit optimal sepration length
-if skipStep1:
-	for i in resmat:
-		bondlist.append(1.2)
-	#	bondlist = [0.9,1.6,1.9,1.4,2.0]
-
-# Start generating structures
-# Step 1: Optimal distance between Substrate and Deposit 
-# Find the optimal distance between Substrate and Deposit using 
-# scoring function. We do this by scanning the Substrate and Deposit 
-# distance of first configurations for every anticipatory vectors pair 
-# for the range of distances given in "bond" variable. We choose the 
-# distance corresponding to maximal score and save it in "bondlist"
-
-if not skipStep1:
-	print 
-	print "FLAG skipStep1 IS NOT SET."
-	print "USING SCORING FUNCTION TO DETERMINE OPTIMAL DISTANCE"
-	print "BETWEEN SLABS. THIS MIGHT TAKE A WHILE."
-	print
-	for vecpair in resmat:
 		print
-		print "***************************************"
-		print "Working on Alignment no. %i out of %i"\
-			%(vecpairidx+1,len(resmat))
-		print "***************************************"
+		#MATERIAL 2
+		print "Constructing bulk Deposit"
+		Miller1 = getMillerFromString(depMillerString)
+
+		Dep = Surface(transM1,positions1,atoms1,Miller1)
+		Dep.bulk(nbulk)
+		Dep.construct()
+		Dep.plane()
+		if not Dep.exists:
+			print "Given plane for Deposit does not exists!"
+			exit()
+		Dep.initpvecNEW()
+		if not Dep.exists:
+			print "Couldn't find primitive vectors for Deposit"
+			exit()
+		Dep.primitivecell()
+
+		print 
+		print 
+		print 
+		print "Matching superlattices" 
 		print
-		bscoreS=[]
-		bscoreD=[]
-		bscoreSD=[]
-		fS=open("SCORE/DIST/OUTPUT-S-%i.txt"%vecpairidx,'w')
-		fD=open("SCORE/DIST/OUTPUT-D-%i.txt"%vecpairidx,'w')
-		fSD=open("SCORE/DIST/OUTPUT-SD-%i.txt"%vecpairidx,'w')
-		for i in bond:
-			iface = Interface(vecsDeposit[0],vecsSubstrate[0],\
-  				     Dep,Sub,vecpair,i,fparam,atomicRadius,False,\
-				     False,False,False)
-			s1=iface.sc1
-			s2=iface.sc2	
-			sca=(s1+s2)/2
-	
-			bscoreD.append(s1)
-			bscoreS.append(s2)
-			bscoreSD.append(sca)
-			# Write to score to files
-			fD.write("%8.4f   %12.6f\n"%(i,s1))
-			fS.write("%8.4f   %12.6f\n"%(i,s2))
-			fSD.write("%8.4f   %12.6f\n"%(i,sca))
 
-		#Find max score for given configuration
-		maxSD = max(bscoreSD)
-		scoreidx = bscoreSD.index(maxSD)
-		minblength = bond[scoreidx]
-		bondlist.append(minblength)
-		fD.close()
-		fS.close()
-		fSD.close()
+		# ASSUME THAT P IS FOR DEPOSIT, Q FOR SUBSTRATE
+		p,q=AreaMatch2(Dep.primarea,Sub.primarea, maxArea, areaThres)
+		print "List of p:"
+		print p
+		print "List of q:"
+		print q
 
-		vecpairidx += 1
-print "BOND LIST",bondlist
-# Step 2: Generate configurations
-# For every anticipatory vector pair in "resmat" generate number of structures
-# given in "confnor", setting the spacing between them to one from "bondlist" 
-# found in step 1.
+		fitcount = 0 
+		totalcomb = 0 
+		resultlist=[] 
+		vecsDeposit = []
+		vecsSubstrate = []
 
-vecpairidx = 0 
-for vecpair in resmat:
-	print
-	print "***************************************"
-	print "Working on Alignment no. %i out of %i"%(vecpairidx+1,len(resmat))
-	print "***************************************"
-	print
-	fS=open("SCORE/OUTPUT-S-%i.txt"%vecpairidx,'w')
-	fD=open("SCORE/OUTPUT-D-%i.txt"%vecpairidx,'w')
-	fSD=open("SCORE/OUTPUT-SD-%i.txt"%vecpairidx,'w')
-	scresultsS=[]
-	scresultsD=[]
-	scresultsSD=[]
+		for i in range(len(p)):
+			vecsD = Superlattice(Dep.a,Dep.b,p[i])
+			vecsS = Superlattice(Sub.a,Sub.b,q[i])
+			for ii in vecsD:
+				for jj in vecsS: 
+					fit,u1,v1,p1,u2,v2,p2 = SuperlatticeMatch(ii,jj,\
+								 vecThres, angleThres)
+					if fit:
+		#				u1,v1,p1,ar1 = SuperlatticeParams(ii)
+		#				u2,v2,p2,ar2 = SuperlatticeParams(jj)
+						result=[p[i],q[i],u1,v1,p1,u2,v2,p2]
 
-	for wf in wflist: # Old option to be able to scan the entire space of 
-		          # f-parameters in scoring function in one run.
-		resultstmpS=[]
-		resultstmpD=[]
-		resultstmpSD=[]
-		for confno in confnor:
+						if resultlist == []:
+							resultlist.append(result)
+							vecsSubstrate.append(jj)
+							vecsDeposit.append(ii)
+						else:
+							duplicate = CheckListDuplicates\
+								(resultlist,result,\
+								 2,3,4,5,6,7)
+							if not duplicate:
+								resultlist.append(result)
+								vecsSubstrate.append(jj)
+								vecsDeposit.append(ii)
+
+						fitcount += 1
+					totalcomb += 1
+
+		print "TOTAL NUMBER OF COMBINATIONS FOR SET OF p and q PAIRS: %i"%(totalcomb)
+		print "TOTAL NUMBER OF FITTED STRUCTURES FOUND: %i"%(fitcount)
+		print "NUMBER OF UNIQUE MATCHES FOUND: %i"%(len(resultlist))
+
+		#Didn't find any match
+		if len(resultlist) == 0: 
+			print 
+			print "********************************************************" 
+			print "Couldn't find any matching superlattices." 
+			print "Materials : %s(%s) - %s(%s) "%(subCIF[0:-4],subMillerString, 
+							      depCIF[0:-4],depMillerString) 
+			print "Try increasing the max. area or loosening the thresholds" 
+			print "********************************************************" 
 			print
-			print "Configuration no. %5i"%confno
-			i=bondlist[vecpairidx]
-			iface = Interface(vecsDeposit[confno],\
-					vecsSubstrate[confno],Dep,Sub,\
-					vecpair,i,wf,atomicRadius, nL,\
-					capAtmD, capAtmS,\
-					genHD,genHS,poissonRatio)
-			s1=iface.sc1
-			s2=iface.sc2	
-			sca=(s1+s2)/2
-	
-			resultstmpD.append(s1)
-			resultstmpS.append(s2)
-			resultstmpSD.append(sca)
-			i=confno
-			mfit = misfitList[i]
-			formatXYZ(iface,i,depCIF[0:-4],depMillerString,\
-					subCIF[0:-4],subMillerString,\
-					vecpairidx,nL,mfit,\
-					writeGEN=False,\
-				        writeAIMS=True,\
-				        writeGULP=True,\
-				        cstrlxD=3,cstrlxS=2,\
-				        cstrlxH=False,\
-				        bondmod=False)
-		scresultsS.append(resultstmpS)
-		scresultsD.append(resultstmpD)
-		scresultsSD.append(resultstmpSD)
-	vecpairidx += 1
+			failedResults.append("%s-%s"%(subMillerString,depMillerString))
+			continue
+#			exit()
 
-	#Prepeare OUTPUT HEADER
-	text = "".join("%10i" %i for i in wflist)
-	fS.write("     %s\n"%text)
-	fD.write("     %s\n"%text)
-	fSD.write("     %s\n"%text)
-	#Write to file
-	########
-	##WHEN CHANGING BOND LENGTH
-	#########
-#	for i in range(len(bond)):
-#		# Subsrtate
-#		text = ""
-#		text = "".join("%10.3f" % t[i] for t in scresultsS)
-#		fS.write("%2.1f  %s\n"%(bond[i],text))
-#		# Deposit
-#		text = ""
-#		text = "".join("%10.3f" % t[i] for t in scresultsD)
-#		fD.write("%2.1f  %s\n"%(bond[i],text))
-		# Deposit+Substrate
-#		text = ""
-#		text = "".join("%10.3f" % t[i] for t in scresultsSD)
-#		fSD.write("%2.1f  %s\n"%(bond[i],text))
-#
-	########
-	##WHEN CHANGING CONFIGURATION
-	#########
-	for i in range(len(confnor)):
-		# Subsrtate
-		text = ""
-		text = "".join("%10.3f" % t[i] for t in scresultsS)
-		fS.write("%2.1f  %s\n"%(confnor[i],text))
-		# Deposit
-		text = ""
-		text = "".join("%10.3f" % t[i] for t in scresultsD)
-		fD.write("%2.1f  %s\n"%(confnor[i],text))
-		# Deposit+Substrate
-		text = ""
-		text = "".join("%10.3f" % t[i] for t in scresultsSD)
-		fSD.write("%2.1f  %s\n"%(confnor[i],text))
+		print "RESULTS:"
+		print "                 Vecx[A]         Vecy[A]    Angle[deg]  Area[A^2]"
+		counter = 0
+		nResults = len(resultlist)
+		misfitList =[]
+		for i in resultlist:
+			
+			ar1 = i[2]*i[3]*m.sin(i[4]*m.pi/180)
+			ar2 = i[5]*i[6]*m.sin(i[7]*m.pi/180)
 
-	fS.close()
-	fD.close()
-	fSD.close()
+			mu    = (1-(i[2]/i[5]))*100  # Deposit/Substrate
+			mv    = (1-(i[3]/i[6]))*100  # Deposit/Substrate
+			mang  = (1-(i[4]/i[7]))*100
+			marea = (1-(ar1/ar2))*100
+			print "Configuration no. %i"%counter
+			print "p = %i, q = %i"%(i[0],i[1])
+			print "Deposit  : %12.2f   %12.2f   %10.1f   %10.4f"\
+					%(i[2],i[3],i[4],ar1)
+			print "Substrate: %12.2f   %12.2f   %10.1f   %10.4f"\
+					%(i[5],i[6],i[7],ar2)
+			print "Misfits  : %11.2f%%   %11.2f%%   %9.2f%%   %9.2f%%"\
+					%(mu,mv,mang,marea)
+			counter += 1
+			misfitList.append([mu,mv])
+
+		print "CONSTRUCTING INTERFACE"
+		#Construct big planes for Substrate and Deposit
+		nbulk2 = 8
+		Sub.bulk(nbulk2)
+		Sub.construct()
+		Sub.plane()
+
+
+		#ii=0
+		#for i in Sub.planepos:
+		#	print Sub.planeatms[ii],i[0],i[1],i[2]
+		#	ii+=1
+
+
+		Dep.bulk(nbulk2)
+		Dep.construct()
+		Dep.plane()
+
+		#ii=0
+		#for i in Dep.planeposblk:
+		#	print Dep.planeatmsblk[ii],i[0],i[1],i[2]
+		#	ii+=1
+
+
+
+
+		# Sort the Substrate-Deposit alignemnt by checking coolinarity of
+		# pairs of anticipatory vectors.
+		avecsSub = Sub.avecs.copy()
+		avecsDep = Dep.avecs.copy()
+		ii = 0
+		# If there is only ona pair of anticipatory vectors,
+		# it means those are vectors pointing straight up, eg. [0,0,z].
+		# Indicate it, by giving them negative labels.
+		if (len(avecsDep) != 1) or (len(avecsSub) != 1):
+			resmat = np.zeros(((len(avecsDep)*len(avecsSub)),3))
+			for i in range(len(avecsSub)):
+				for j in range(len(avecsDep)):
+					prod = np.dot(avecsSub[i],avecsDep[j])
+					nS = np.linalg.norm(avecsSub[i])
+					nD = np.linalg.norm(avecsDep[j])
+					cosphi = prod/(nS*nD)
+					cosphi = round(cosphi,4)
+					resmat[ii,0] = m.acos(cosphi)
+					resmat[ii,1] = i  
+					resmat[ii,2] = j 
+					ii += 1
+			resmat = CleanMatElements(resmat)
+			# Sort the results and pick the smallest dot product
+			resmat = resmat[np.argsort(resmat[:,0])]
+			# Create additional alignment - where vectors are pointing straight up
+			resmat = np.vstack([np.array((0.0,-1.0,-1.0)),resmat])
+
+		else:
+			resmat = np.array([[0.0,-1.0,-1.0]])
+
+		print
+		print "****************************"
+		print "Found %i possible alignments"%len(resmat) 
+		print "****************************"
+		print
+
+		#bondl=[0.9,1.6,1.9,1.4,2.0]
+		#resmat=np.array([[0.0,-1.0,-1.0]])
+		#resmat=np.array([[0.0,1.0,1.0]])
+		#resmat=np.array([resmat[2]])
+		scoreDirName = "SCORE-%s-%s"%(subMillerString,depMillerString)
+		os.system("mkdir -p %s/DIST"%scoreDirName)
+
+		# if user asked for more results than there actually is, limit it.
+		if nConf > nResults: nConf = nResults
+
+		# Initialize variables
+		vecpairidx = 0   # counter for anticicipatory vector pairs
+		bond = np.arange(0.5,3.0,0.1) # range of bond lengths to scan for search of 
+					      # optimal Substrate-Deposit separation
+		confnor = range(nConf) # number of configurations to consider
+		#fparam = 1         # f-parameter for scoring function
+		genHD = False       # generate hydrogens on Deposit?
+		genHS = False      # generate hydrogens on Substrate?
+		#capAtmS = "Cl"
+		#capAtmD = "H"
+		atomicRadius = (subAtRad + depAtRad)/2 
+		wflist = [fparam]  # list of f-parameters for Scoring function
+		#skipStep1 = True # option to skip Step 1. You must specify bondlist 
+		#                   # by hand below
+
+		bondlist = []      # list for Substrate-Deposit optimal sepration length
+		if skipStep1:
+			for i in resmat:
+				bondlist.append(1.2)
+			#	bondlist = [0.9,1.6,1.9,1.4,2.0]
+
+		# Start generating structures
+		# Step 1: Optimal distance between Substrate and Deposit 
+		# Find the optimal distance between Substrate and Deposit using 
+		# scoring function. We do this by scanning the Substrate and Deposit 
+		# distance of first configurations for every anticipatory vectors pair 
+		# for the range of distances given in "bond" variable. We choose the 
+		# distance corresponding to maximal score and save it in "bondlist"
+
+		if not skipStep1:
+			print 
+			print "FLAG skipStep1 IS NOT SET."
+			print "USING SCORING FUNCTION TO DETERMINE OPTIMAL DISTANCE"
+			print "BETWEEN SLABS. THIS MIGHT TAKE A WHILE."
+			print
+			for vecpair in resmat:
+				print
+				print "***************************************"
+				print "Working on Alignment no. %i out of %i"\
+					%(vecpairidx+1,len(resmat))
+				print "***************************************"
+				print
+				bscoreS=[]
+				bscoreD=[]
+				bscoreSD=[]
+				fS=open("%s/DIST/OUTPUT-S-%i.txt"%(vecpairidx,scoreDirName),'w')
+				fD=open("%s/DIST/OUTPUT-D-%i.txt"%(vecpairidx,scoreDirName),'w')
+				fSD=open("%s/DIST/OUTPUT-SD-%i.txt"%(scoreDirName,vecpairidx),'w')
+				for i in bond:
+					iface = Interface(vecsDeposit[0],vecsSubstrate[0],\
+						     Dep,Sub,vecpair,i,fparam,atomicRadius,False,\
+						     False,False,False)
+					s1=iface.sc1
+					s2=iface.sc2	
+					sca=(s1+s2)/2
+			
+					bscoreD.append(s1)
+					bscoreS.append(s2)
+					bscoreSD.append(sca)
+					# Write to score to files
+					fD.write("%8.4f   %12.6f\n"%(i,s1))
+					fS.write("%8.4f   %12.6f\n"%(i,s2))
+					fSD.write("%8.4f   %12.6f\n"%(i,sca))
+
+				#Find max score for given configuration
+				maxSD = max(bscoreSD)
+				scoreidx = bscoreSD.index(maxSD)
+				minblength = bond[scoreidx]
+				bondlist.append(minblength)
+				fD.close()
+				fS.close()
+				fSD.close()
+
+				vecpairidx += 1
+		print "BOND LIST",bondlist
+		# Step 2: Generate configurations
+		# For every anticipatory vector pair in "resmat" generate number of structures
+		# given in "confnor", setting the spacing between them to one from "bondlist" 
+		# found in step 1.
+
+		vecpairidx = 0 
+		for vecpair in resmat:
+			print
+			print "***************************************"
+			print "Working on Alignment no. %i out of %i"%(vecpairidx+1,len(resmat))
+			print "***************************************"
+			print
+			fS=open("%s/OUTPUT-S-%i.txt"%(scoreDirName,vecpairidx),'w')
+			fD=open("%s/OUTPUT-D-%i.txt"%(scoreDirName,vecpairidx),'w')
+			fSD=open("%s/OUTPUT-SD-%i.txt"%(scoreDirName,vecpairidx),'w')
+			scresultsS=[]
+			scresultsD=[]
+			scresultsSD=[]
+
+			for wf in wflist: # Old option to be able to scan the entire space of 
+					  # f-parameters in scoring function in one run.
+				resultstmpS=[]
+				resultstmpD=[]
+				resultstmpSD=[]
+				for confno in confnor:
+					print
+					print "Configuration no. %5i"%confno
+					i=bondlist[vecpairidx]
+					iface = Interface(vecsDeposit[confno],\
+							vecsSubstrate[confno],Dep,Sub,\
+							vecpair,i,wf,atomicRadius, nL,\
+							capAtmD, capAtmS,\
+							genHD,genHS,poissonRatio)
+					s1=iface.sc1
+					s2=iface.sc2	
+					sca=(s1+s2)/2
+			
+					resultstmpD.append(s1)
+					resultstmpS.append(s2)
+					resultstmpSD.append(sca)
+					i=confno
+					mfit = misfitList[i]
+					formatXYZ(iface,i,depCIF[0:-4],depMillerString,\
+							subCIF[0:-4],subMillerString,\
+							vecpairidx,nL,mfit,\
+							writeGEN=False,\
+							writeAIMS=True,\
+							writeGULP=True,\
+							cstrlxD=3,cstrlxS=2,\
+							cstrlxH=False,\
+							bondmod=False)
+				scresultsS.append(resultstmpS)
+				scresultsD.append(resultstmpD)
+				scresultsSD.append(resultstmpSD)
+			vecpairidx += 1
+
+			#Prepeare OUTPUT HEADER
+			text = "".join("%10i" %i for i in wflist)
+			fS.write("     %s\n"%text)
+			fD.write("     %s\n"%text)
+			fSD.write("     %s\n"%text)
+			#Write to file
+			########
+			##WHEN CHANGING BOND LENGTH
+			#########
+		#	for i in range(len(bond)):
+		#		# Subsrtate
+		#		text = ""
+		#		text = "".join("%10.3f" % t[i] for t in scresultsS)
+		#		fS.write("%2.1f  %s\n"%(bond[i],text))
+		#		# Deposit
+		#		text = ""
+		#		text = "".join("%10.3f" % t[i] for t in scresultsD)
+		#		fD.write("%2.1f  %s\n"%(bond[i],text))
+				# Deposit+Substrate
+		#		text = ""
+		#		text = "".join("%10.3f" % t[i] for t in scresultsSD)
+		#		fSD.write("%2.1f  %s\n"%(bond[i],text))
+		#
+			########
+			##WHEN CHANGING CONFIGURATION
+			#########
+			for i in range(len(confnor)):
+				# Subsrtate
+				text = ""
+				text = "".join("%10.3f" % t[i] for t in scresultsS)
+				fS.write("%2.1f  %s\n"%(confnor[i],text))
+				# Deposit
+				text = ""
+				text = "".join("%10.3f" % t[i] for t in scresultsD)
+				fD.write("%2.1f  %s\n"%(confnor[i],text))
+				# Deposit+Substrate
+				text = ""
+				text = "".join("%10.3f" % t[i] for t in scresultsSD)
+				fSD.write("%2.1f  %s\n"%(confnor[i],text))
+
+			fS.close()
+			fD.close()
+			fSD.close()
+#List failed results
+if len(failedResults) >0:
+	fileF = open("FAILED_RESULTS.txt",'w')
+	fileF.write("The following orientations failed:\n")
+	fileF.write("Substrate: %s  -  Deposit: %s\n"%(subCIF[0:-4],depCIF[0:-4]))
+	for i in failedResults:
+		fileF.write("%s\n"%i)
+
+	fileF.write("\nTry increasing max area, or loosening the thresholds")
+	fileF.close()	
+
 
 
