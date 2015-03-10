@@ -271,7 +271,6 @@ def ReadCIF(filename):
 			atomIndex = 4
 		else:
 			atomIndex = 3
-		print "ATOMINDEX",atomIndex
 		x = float(CheckParentheses(atom[atomIndex]))
 		y = float(CheckParentheses(atom[atomIndex+1]))
 		z = float(CheckParentheses(atom[atomIndex+2]))
@@ -2106,9 +2105,6 @@ class Interface:
 		if misfitPhi >1:
 			misfitPhi = 1-abs(misfitPhi-1)
 
-		print "MISFITS", misfitX,misfitY
-		print "MISFITS ANGLE", misfitPhi, phiSub ,phiDep
-
 		self.sc1 = self.SCORE7(self.IfacePosSExSC,self.idxDepExS,\
 				       self.idxSubExS,self.Depavecs,\
 				       self.Subavecs,self.IfaceVecs,\
@@ -3870,22 +3866,36 @@ depCIF, depMiller, \
 maxArea, areaThres, vecThres, angleThres,\
 capAtmS, capAtmD, fparam, nL, nConf, subAtRad, depAtRad,\
 skipStep1, poissonRatio = readInput(inputFile)
-
+print 
+print "Substrate CIF..."
 i,transM,atoms,positions,atomtyp=ReadCIF(subCIF)
+print "Deposit CIF..."
 i1,transM1,atoms1,positions1,atomtyp1=ReadCIF(depCIF)
 
 subMillerList = createMillerList(subMiller)
 depMillerList = createMillerList(depMiller)
 
+# Create list for to store failed results
 failedResults=[]
+# Create big bulk of Substarte and Deposit.
+# It will be re-used each time an interface needs to be created
+print 
+print "Constructing bulk strucutre for Substrate..."
+subBigBulk = Surface(transM,positions,atoms,np.array((0,0,0)))
+subBigBulk.bulk(8)
+print "Constructing bulk strucutre for Deposit..."
+depBigBulk = Surface(transM1,positions1,atoms1,np.array((0,0,0)))
+depBigBulk.bulk(8)
 
+# Iterate over Miller indieces 
 for subMillerString in subMillerList:
 	for depMillerString in depMillerList:
 		 
 		#MATERIAL 1
-		nbulk=1
 		print "Constructing bulk Substrate"
 		Miller = getMillerFromString(subMillerString)
+		# Set size of bulk to be twice the max Miller index
+		nbulk=max(Miller)*2
 
 		Sub=Surface(transM,positions,atoms,Miller)
 		Sub.bulk(nbulk)
@@ -3894,17 +3904,23 @@ for subMillerString in subMillerList:
 		Sub.plane()
 		if not Sub.exists:
 			print "Given plane for Substrate does not exists!"
-			exit()
+			failedResults.append("%s-%s"%(subMillerString,depMillerString))
+			continue
+			#exit()
 		Sub.initpvecNEW()
 		if not Sub.exists:
 			print "Couldn't find primitive vectors for Substrate"
-			exit()
+			failedResults.append("%s-%s"%(subMillerString,depMillerString))
+			continue
+			#exit()
 		Sub.primitivecell()
 
 		print
 		#MATERIAL 2
 		print "Constructing bulk Deposit"
 		Miller1 = getMillerFromString(depMillerString)
+		# Set size of bulk to be twice the max Miller index
+		nbulk=max(Miller)*2
 
 		Dep = Surface(transM1,positions1,atoms1,Miller1)
 		Dep.bulk(nbulk)
@@ -3912,11 +3928,15 @@ for subMillerString in subMillerList:
 		Dep.plane()
 		if not Dep.exists:
 			print "Given plane for Deposit does not exists!"
-			exit()
+			failedResults.append("%s-%s"%(subMillerString,depMillerString))
+			continue
+			#exit()
 		Dep.initpvecNEW()
 		if not Dep.exists:
 			print "Couldn't find primitive vectors for Deposit"
-			exit()
+			failedResults.append("%s-%s"%(subMillerString,depMillerString))
+			continue
+			#exit()
 		Dep.primitivecell()
 
 		print 
@@ -4011,8 +4031,11 @@ for subMillerString in subMillerList:
 
 		print "CONSTRUCTING INTERFACE"
 		#Construct big planes for Substrate and Deposit
-		nbulk2 = 8
-		Sub.bulk(nbulk2)
+		#nbulk2 = 8
+		#Sub.bulk(nbulk2)
+		print 
+		Sub.positions = subBigBulk.positions.copy()
+		Sub.atoms = subBigBulk.atoms
 		Sub.construct()
 		Sub.plane()
 
@@ -4023,7 +4046,9 @@ for subMillerString in subMillerList:
 		#	ii+=1
 
 
-		Dep.bulk(nbulk2)
+#		Dep.bulk(nbulk2)
+		Dep.positions = depBigBulk.positions.copy()
+		Dep.atoms = depBigBulk.atoms
 		Dep.construct()
 		Dep.plane()
 
@@ -4031,8 +4056,6 @@ for subMillerString in subMillerList:
 		#for i in Dep.planeposblk:
 		#	print Dep.planeatmsblk[ii],i[0],i[1],i[2]
 		#	ii+=1
-
-
 
 
 		# Sort the Substrate-Deposit alignemnt by checking coolinarity of
