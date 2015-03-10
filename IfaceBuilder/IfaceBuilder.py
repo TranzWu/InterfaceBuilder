@@ -2156,6 +2156,20 @@ class Interface:
 			Hpos = 0
 		idx = 0
 
+                # Orient the atoms in such a way that the coorindate origin is 
+                # in the middle of the top plane
+                # Find positions of only top plane
+                idxPlane = abs(pos[:,2]) == 0.0
+                posPlane = pos[idxPlane]
+                # Find centroid of this plane
+                cX = sum(posPlane[:,0])/len(posPlane[:,0])
+                cY = sum(posPlane[:,1])/len(posPlane[:,1])
+                # The z-variable of centroid is constant
+                cZ = posPlane[0,2]
+                cXYZ = np.array((cX,cY,cZ))
+                nnXYZ = fneigh(cXYZ,posPlane)
+                originIdx = int(nnXYZ[0][1])
+
 		# Find the all the atoms that are inside the area 
 		# designated by vectors vec1 and vec2
 		# We will use barycentric coordinates to do this
@@ -2167,7 +2181,8 @@ class Interface:
 		# We need this for calculations in barycentric coordinates
 
 #		pos -= pos[0] # Does not work for large number of atoms 
-		shift = pos[0].copy()
+		#shift = pos[0].copy()
+		shift = posPlane[originIdx].copy()
 		pos -= shift
 
 		for atom in pos:
@@ -3882,10 +3897,10 @@ failedResults=[]
 print 
 print "Constructing bulk strucutre for Substrate..."
 subBigBulk = Surface(transM,positions,atoms,np.array((0,0,0)))
-subBigBulk.bulk(8)
+subBigBulk.bulk(4)
 print "Constructing bulk strucutre for Deposit..."
 depBigBulk = Surface(transM1,positions1,atoms1,np.array((0,0,0)))
-depBigBulk.bulk(8)
+depBigBulk.bulk(4)
 
 # Iterate over Miller indieces 
 for subMillerString in subMillerList:
@@ -3895,7 +3910,7 @@ for subMillerString in subMillerList:
 		print "Constructing bulk Substrate"
 		Miller = getMillerFromString(subMillerString)
 		# Set size of bulk to be twice the max Miller index
-		nbulk=max(Miller)*2
+		nbulk = max(Miller)*2
 
 		Sub=Surface(transM,positions,atoms,Miller)
 		Sub.bulk(nbulk)
@@ -3920,7 +3935,7 @@ for subMillerString in subMillerList:
 		print "Constructing bulk Deposit"
 		Miller1 = getMillerFromString(depMillerString)
 		# Set size of bulk to be twice the max Miller index
-		nbulk=max(Miller)*2
+		nbulk = max(Miller1)*2
 
 		Dep = Surface(transM1,positions1,atoms1,Miller1)
 		Dep.bulk(nbulk)
