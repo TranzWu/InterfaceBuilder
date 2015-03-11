@@ -217,20 +217,28 @@ def ReadCIF(filename):
 
 	# READ ATOM FRACTIONAL COORDINATES
 	# Find index of the the beginning of atom fractional coordinates
+
 	try:
 		# Unix line ending
-		ib = lines.index("_atom_site_occupancy\n")
+		ib = lines.index("_atom_site_label\n")
 	except ValueError:
 		# Windows line ending
-		ib = lines.index("_atom_site_occupancy\r\n")
+		ib = lines.index("_atom_site_label\r\n")
 
-	# Sometimes in happens in cif (usually from ISCD) that after 
-	# _atom_site_occupancy line there is _atom_site_attached_hydrogens
-	# lable. Remove it.
-	if (lines[ib+1] == ("_atom_site_attached_hydrogens\n")) or \
-           (lines[ib+1] == ("_atom_site_attached_hydrogens\r\n")):
-		   ib = ib + 1
-		
+	allLabelsRead = False
+	ibSave = ib
+	while not allLabelsRead:
+		ib += 1
+		if lines[ib][0] == "_":
+			if lines[ib][0:18] == "_atom_site_fract_x":
+				xPos = ib - ibSave
+			if lines[ib][0:18] == "_atom_site_fract_y":
+				yPos = ib - ibSave
+			if lines[ib][0:18] == "_atom_site_fract_z":
+				zPos = ib - ibSave
+		else:
+			allLabelsRead = True
+
 	# Get atom positions
 	# We don't know how many atoms ther is the structure
 	# Read them unitl keyworld "loop", or line begining with "_"
@@ -239,7 +247,7 @@ def ReadCIF(filename):
 	frapos = []
 	while 1:
 		try:
-			line = lines[ib+1]
+			line = lines[ib]
 		except IndexError:
 			break # end of file reached 
 
@@ -259,28 +267,20 @@ def ReadCIF(filename):
 	ii = 0 #index
 	for atom in frapos:
 		atom = atom.split()
-		symbol = atom[0][:-1]
-		# Sometimes lines in the cif file has the format:
-		# "Si1 Si0+ 8 a 0. 0. 0. 0.54(1) 1. 0"
-		# sometimes:
-		# "Ta1      2 a   0.00000   0.00000   0.00000 1.0"
-		# Discover which one it is by checking if the second
-		# element is equal to the first
-		testElem = atom[1]
-		if atom[1][:-2] == symbol:
-			atomIndex = 4
-		else:
-			atomIndex = 3
-		x = float(CheckParentheses(atom[atomIndex]))
-		y = float(CheckParentheses(atom[atomIndex+1]))
-		z = float(CheckParentheses(atom[atomIndex+2]))
+		symbol = atom[0]
+		# Strip the digits from the symbol name:
+		if symbol[-1].isdigit():
+			symbol = symbol[0:-1]
+
+		x = float(CheckParentheses(atom[xPos]))
+		y = float(CheckParentheses(atom[yPos]))
+		z = float(CheckParentheses(atom[zPos]))
 
 		fracoord[ii,0] = x
 		fracoord[ii,1] = y
 		fracoord[ii,2] = z
 		atomlabels.append(symbol)
 		ii = ii+1
-	
 	# Create array with fractional coordinates based on
 	# symmetry positions for each atom type
 #	positions = np.zeros((len(fracoord)*len(atompos),3))
@@ -396,8 +396,8 @@ def ReadCIF(filename):
 	#TODO: check if this is always true.
 	# This is done for the cases when if CIF file the coordinates of first atom are different from 0.0 0.0 0.0
 	# Such cases prevents proper rotations on def plane, where the desired plane doesnt have z=0
-	shift = positions[0]
-	positions -= positions[0]
+	shift = positions[0].copy()
+	positions -= shift
 	#end TODO
 	return MatID,f2cmat,atoms,positions,atomlabels
 
@@ -824,7 +824,8 @@ class Surface:
 		# Remove all duplicates
 
 #		self.positions, self.atoms = self.__unique(posout,newlabels)
-		self.positions,self.atoms = unique2(posout,newlabels)
+		posout = CleanMatElements(posout)
+		self.positions, self.atoms = unique2(posout,newlabels)
 
 	def bulkNAIVE(self,ncells):
 		#
@@ -1173,9 +1174,9 @@ class Surface:
 			for i in idxlist:
 				self.planeatms.append(self.atoms[i])
 
-			uqatoms,uqidx,uqidxbulk = self.__finduqatoms(self.planeatms,\
+			uqatoms,uqidx,uqidxbulk = self.__finduqatomsCENTER(self.planeatms,\
 					                   posrot,idxlist)
-		
+				
 			# Find anticipatory vectors for each unique atom on the plane
 			avecslist = []
 			for idx in uqidxbulk:
@@ -1186,7 +1187,7 @@ class Surface:
 			self.avecs = avecslist[0]
 			# Create a dictionary avecall to hold all anticipatory
 			# vectors assiciated to given atom type. This will be 
-			# usefull for scroing function
+			# usefull for scoring function
 			self.avecsall = {}
 			for i in range(len(uqatoms)):
 				lab = uqatoms[i]
@@ -1203,7 +1204,7 @@ class Surface:
 	
 			# Find nearest unique atoms in the whole bulk 
 			# This is needed to find nearest neigbours of each atom type
-			uqatoms,uqidx,uqidxbulk = self.__finduqatoms(self.atoms,\
+			uqatoms,uqidx,uqidxbulk = self.__finduqatomsCENTER(self.atoms,\
 					                   posrot,\
 							   idxlist=range(len(posrot)))
 	
@@ -1232,7 +1233,7 @@ class Surface:
 	
 			# Create surface coordinates
 			self.planepos = posrot[idxlist]
-			
+
 			# Create surace coordiantes including atoms below it
 			# Make sure that surface atoms are first in the array
 			idxlistblk = idxlist + idxlistblk
@@ -1261,6 +1262,40 @@ class Surface:
 
 		postmp = pos[idxlist]	
 		for i in range(len(postmp)):
+			atom = labels[i]
+			if atom not in uql:
+				uql.append(atom)
+				uqi.append(i)
+
+		for i in uqi:
+			uqibulk.append(idxlist[i])
+
+		return uql,uqi,uqibulk
+
+	def __finduqatomsCENTER(self,labels,pos,idxlist):
+		# Routine to find unique types of atoms from set of
+		# atom lables
+		# Return atom labels, and index of the atom on the plane
+		# and index of atoms in the bulk structureq
+		#
+		# Modified version of __finduqatoms to take atom in the center 
+		# as the base to look
+
+		uql = [] # unique labels
+		uqi = [] # index of representative atom on surface
+		uqibulk = [] # index of representative atom in bulk structure
+
+		postmp = pos[idxlist]	
+
+                # Find centroid 
+                cX = sum(postmp[:,0])/len(postmp[:,0])
+                cY = sum(postmp[:,1])/len(postmp[:,1])
+                cZ = sum(postmp[:,2])/len(postmp[:,2])
+                cXYZ = np.array((cX,cY,cZ))
+                nnXYZ = fneigh(cXYZ,postmp)
+                originIdx = int(nnXYZ[0][1])
+
+		for i in range(originIdx,len(postmp)):
 			atom = labels[i]
 			if atom not in uql:
 				uql.append(atom)
@@ -1442,6 +1477,7 @@ class Surface:
 		# Sort distmat. 
 		idx = distmat.argsort()
 
+
 		# Find two non-linear vectors. They will be initial 
 		# primitive vectors
 		# It is most likely to be fist two smallest vectors,
@@ -1468,8 +1504,6 @@ class Surface:
 					ma = nu%na
 				else:
 					ma = na%nu
-	
-#				print nu,na,ma
 	
 				if round(ma,6) == 0.0: primitive = True
 	
@@ -3891,7 +3925,14 @@ subMillerList = createMillerList(subMiller)
 depMillerList = createMillerList(depMiller)
 
 # Create list for to store failed results
-failedResults=[]
+failedResults = []
+# Lists to store when Deposit/Substrate does not have given orientations
+depPlaneNE = []
+subPlaneNE = []
+# Lists to store when looking for primitive vectors failed
+depPrimNE  = []
+subPrimNE  = []
+
 # Create big bulk of Substarte and Deposit.
 # It will be re-used each time an interface needs to be created
 print 
@@ -3919,13 +3960,13 @@ for subMillerString in subMillerList:
 		Sub.plane()
 		if not Sub.exists:
 			print "Given plane for Substrate does not exists!"
-			failedResults.append("%s-%s"%(subMillerString,depMillerString))
+			subPlaneNE.append("%s-%s"%(subMillerString,depMillerString))
 			continue
 			#exit()
 		Sub.initpvecNEW()
 		if not Sub.exists:
 			print "Couldn't find primitive vectors for Substrate"
-			failedResults.append("%s-%s"%(subMillerString,depMillerString))
+			subPrimNE.append("%s-%s"%(subMillerString,depMillerString))
 			continue
 			#exit()
 		Sub.primitivecell()
@@ -3943,13 +3984,13 @@ for subMillerString in subMillerList:
 		Dep.plane()
 		if not Dep.exists:
 			print "Given plane for Deposit does not exists!"
-			failedResults.append("%s-%s"%(subMillerString,depMillerString))
+			depPlaneNE.append("%s-%s"%(subMillerString,depMillerString))
 			continue
 			#exit()
 		Dep.initpvecNEW()
 		if not Dep.exists:
 			print "Couldn't find primitive vectors for Deposit"
-			failedResults.append("%s-%s"%(subMillerString,depMillerString))
+			depPrimNE.append("%s-%s"%(subMillerString,depMillerString))
 			continue
 			#exit()
 		Dep.primitivecell()
@@ -4043,7 +4084,7 @@ for subMillerString in subMillerList:
 					%(mu,mv,mang,marea)
 			counter += 1
 			misfitList.append([mu,mv])
-
+		
 		print "CONSTRUCTING INTERFACE"
 		#Construct big planes for Substrate and Deposit
 		#nbulk2 = 8
@@ -4294,15 +4335,44 @@ for subMillerString in subMillerList:
 			fD.close()
 			fSD.close()
 #List failed results
+fileF = open("FAILED_RESULTS.txt",'w')
 if len(failedResults) >0:
-	fileF = open("FAILED_RESULTS.txt",'w')
-	fileF.write("The following orientations failed:\n")
+	fileF.write("The following orientations coudn't be found:\n")
 	fileF.write("Substrate: %s  -  Deposit: %s\n"%(subCIF[0:-4],depCIF[0:-4]))
 	for i in failedResults:
 		fileF.write("%s\n"%i)
 
-	fileF.write("\nTry increasing max area, or loosening the thresholds")
-	fileF.close()	
+	fileF.write("\nTry increasing max area, or loosening the thresholds\n\n")
+
+if len(subPlaneNE) >0:
+	fileF.write("Following planes does not exist for the Substrate:\n")
+	fileF.write("Substrate: %s\n"%subCIF[0:-4])
+	for i in subPlaneNE:
+		fileF.write("%s\n"%i)
+	fileF.write("\n\n")
+
+if len(depPlaneNE) >0:
+	fileF.write("Following planes does not exist for the Deposit:\n")
+	fileF.write("Substrate: %s\n"%depCIF[0:-4])
+	for i in depPlaneNE:
+		fileF.write("%s\n"%i)
+	fileF.write("\n\n")
+
+if len(subPrimNE) >0:
+	fileF.write("Couldn't find primitive vectors for Substrate planes:\n")
+	fileF.write("Substrate: %s\n"%subCIF[0:-4])
+	for i in subPrimNE:
+		fileF.write("%s\n"%i)
+	fileF.write("\n\n")
+
+if len(depPrimNE) >0:
+	fileF.write("Couldn't find primitive vectors for Deposit planes:\n")
+	fileF.write("Substrate: %s\n"%depCIF[0:-4])
+	for i in depPrimNE:
+		fileF.write("%s\n"%i)
+	fileF.write("\n\n")
+
+fileF.close()	
 
 
 
