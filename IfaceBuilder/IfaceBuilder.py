@@ -173,6 +173,10 @@ def ReadCIF(filename):
 	lines = file.readlines()
 	file.close()
 
+	# Strip whitespaces and line endings
+	for i in range(len(lines)):
+		lines[i]=lines[i].strip()
+
 	for line in lines:
 		if line.find("data") >= 0:
 			MatID = line
@@ -217,13 +221,23 @@ def ReadCIF(filename):
 
 	# READ ATOM FRACTIONAL COORDINATES
 	# Find index of the the beginning of atom fractional coordinates
+	# Find either _atom_site_label or _atom_site_symbol and see what is first
+	# Set the ib to the fist one
+	try:
+		ibL = lines.index("_atom_site_label")
+	except ValueError:
+		ibL = 100000 # Just put big unresonable value
 
 	try:
-		# Unix line ending
-		ib = lines.index("_atom_site_label\n")
+		ibS = lines.index("_atom_site_type_symbol")
 	except ValueError:
-		# Windows line ending
-		ib = lines.index("_atom_site_label\r\n")
+		ibS = 100000 # Just put big unresonable value
+
+	# Find where is the begining of atom definition loop in CIF file.
+	if ibL < ibS:
+		ib = ibL
+	else:
+		ib = ibS
 
 	allLabelsRead = False
 	ibSave = ib
@@ -250,6 +264,12 @@ def ReadCIF(filename):
 			line = lines[ib]
 		except IndexError:
 			break # end of file reached 
+
+		# If file finishes with empty line
+		try:
+			test = line[0]
+		except IndexError:
+			break
 
 		if (line[0:4] != "loop") and (line[0] != "_") \
 		   and (line[0] != "#"):
@@ -3938,10 +3958,10 @@ subPrimNE  = []
 print 
 print "Constructing bulk strucutre for Substrate..."
 subBigBulk = Surface(transM,positions,atoms,np.array((0,0,0)))
-subBigBulk.bulk(4)
+subBigBulk.bulk(8)
 print "Constructing bulk strucutre for Deposit..."
 depBigBulk = Surface(transM1,positions1,atoms1,np.array((0,0,0)))
-depBigBulk.bulk(4)
+depBigBulk.bulk(8)
 
 # Iterate over Miller indieces 
 for subMillerString in subMillerList:
