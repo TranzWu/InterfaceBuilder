@@ -3457,7 +3457,7 @@ def formatXYZ(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nL,mfit,\
 				     cstrlxH=False,\
 				     bondmod=False): 
 	#
-	# Write to XYZ iile with coordinates for given interface
+	# Write to XYZ file with coordinates for given interface
 	# Optional create DFTB+ GEN file format using external program
 	#
 	# cstrlx - optional create AIMS file with contrained atoms on the 
@@ -3466,8 +3466,12 @@ def formatXYZ(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nL,mfit,\
 	# cstrlxHD - hydrogens on deposit
 	# cstrlxHS - hydrogens on substrate
 	# 
-
-	dirname = "%s%s-%s%s/%i"%(Dname,Dface,Sname,Sface,vecpairidx)
+	
+	#dirname = "%s%s-%s%s/%i"%(Dname,Dface,Sname,Sface,vecpairidx)
+	dirnameConf = "%s%s-%s%s-%i"%(Dname,Dface,Sname,Sface,confno)
+	if bondmod:
+		dirnameConf = "%s%s-%s%s-%2.1f"%(Dname,Dface,Sname,Sface,confno)
+	dirname = "%s%s-%s%s/%i/%s"%(Dname,Dface,Sname,Sface,vecpairidx,dirnameConf)
 	os.system("mkdir -p %s"%dirname)
 
 	# Write which vectors we are using for alignement
