@@ -1530,7 +1530,7 @@ class Surface:
 				# 2nd condition
 				dau = np.dot(self.a,self.u)
 	
-				if abs(dau) == (nu**2)/2: primitive = True
+				if round(abs(dau),5) == round((nu**2)/2,5): primitive = True
 
 				if primitive: break
 			i += 1
@@ -1559,7 +1559,7 @@ class Surface:
 				# 2nd condition
 				dbv = np.dot(self.b,self.v)
 				
-				if abs(dbv) == (nv**2)/2: primitive = True
+				if round(abs(dbv),5) == round((nv**2)/2,5): primitive = True
 	
 				# Check if vector b is not linear with vector a
 				if primitive:
@@ -3868,7 +3868,7 @@ def formatXYZ(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nL,mfit,\
 	text="Outside idx:   "+"".join("%5i"% t for t in frozenidx)+"\n"
 	fileIDX.write(text)
 	fileIDX.write("Area: %12.6f\n"%area)
-	fileIDX.write("Misfit: %12.6f %12.6f\n"%(mfit[0],mfit[1]))
+	fileIDX.write("Misfit: %12.6f %12.6f, Angle: %12.6f\n"%(mfit[0],mfit[1],mfit[2]))
 
 	file.close()	
 	fileS.close()	
@@ -4107,7 +4107,7 @@ for subMillerString in subMillerList:
 			print "Misfits  : %11.2f%%   %11.2f%%   %9.2f%%   %9.2f%%"\
 					%(mu,mv,mang,marea)
 			counter += 1
-			misfitList.append([mu,mv])
+			misfitList.append([mu,mv,mang])
 		
 		print "CONSTRUCTING INTERFACE"
 		#Construct big planes for Substrate and Deposit
@@ -4397,6 +4397,12 @@ if len(depPrimNE) >0:
 	fileF.write("\n\n")
 
 fileF.close()	
+
+
+for i in range(len(misfitList)):
+	n = ((misfitList[i][0]**2) + (misfitList[i][1]**2))**0.5
+	print "%i   %12.6f"%(i,n)
+
 
 
 
