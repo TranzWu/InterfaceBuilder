@@ -811,6 +811,101 @@ class Surface:
 		self.nneigh = 0 # number of nearst neigbours
 		self.exists = False
 
+	def __removeperiodic3D(self,pos,vec1,vec2,vec3):
+
+		# Find the atoms in the superlattice that are
+		# translations of the other atoms 
+
+		# Rude and not effecient solution 
+		# Try more through array interception
+
+		r = range(2)
+		uniqlist=[]
+		poscheck = []
+		for x in r:
+			for y in r:
+				for z in r:
+					if x != 0 or y!= 0 or z!=0:
+						if poscheck == []:
+							poscheck = pos+x*vec1+y*vec2+z*vec3
+						else:
+							tmp = pos + x*vec1 + y*vec2+z*vec3
+							poscheck = np.vstack\
+							          ([poscheck,tmp])
+
+		# Find indicies of unique elements in pos array that 
+		# are not there is poscheck array
+		ii = 0
+		for i in pos:
+			uq = True
+			for j in poscheck:
+				# Smaller accuracy required for z-axis
+				# so round it to 5
+				# Gives problems otherwise
+				if round(i[0],8) == round(j[0],8) and \
+				   round(i[1],8) == round(j[1],8) and \
+				   round(i[2],8) == round(j[2],8):
+					   uq = False
+			if uq:
+				if ii not in uniqlist:
+					uniqlist.append(ii)
+			ii += 1
+		return uniqlist
+
+	def bulkNEW(self,ncells):
+		# 
+		# OLD ROUTINE TO CONSTRUCT BULK MATERIAL USING 
+		# __UNIQUE ROUTINE TO FIND DUPLICATE ELEMENTS.
+		# THE PROBLEM WAS THAT IT DID NOT KEEP THE ORDER 
+		# OF THE POSITION ARRAY
+		# Consruct bulk surface from "ncells x unit cell"
+		#
+		# The results is saved in the positions variable
+
+		r = range(-ncells,ncells+1)
+		
+		# Initial cooridnates and labels 
+		posout = self.unitcell.copy()
+		newlabels = self.__addatoms([])
+
+		# Make unit cell periodic
+		perIDX = self.__removeperiodic3D(self.unitcell,self.A,self.B,self.C)
+		unitcellPer = self.unitcell.copy()[perIDX]
+		baseLabel = []
+		# Find atom labels for periodic unit cell
+		for i in perIDX:
+			baseLabel.append(newlabels[i])
+		newlabels = list(baseLabel)
+
+		posout = unitcellPer.copy()
+
+		for x in r:
+			for y in r:
+				for z in r:
+					if x != 0 or y!= 0 or z != 0:
+						newpos = unitcellPer \
+						           + x*self.A \
+							   + y*self.B \
+						           + z*self.C
+						posout = \
+						      np.vstack([posout,newpos])
+						labels = \
+						      self.__addatomsNEW(newlabels,baseLabel)
+#						print len(baseLabel)
+	#					newlabels += baseLabel
+
+		# Remove all duplicates
+
+#		self.positions, self.atoms = self.__unique(posout,newlabels)
+		#self.positions,self.atoms = unique2(posout,newlabels)
+#		ii = 0
+#		for i in posout:
+#			print newlabels[ii],i[0],i[1],i[2]
+#			ii+=1
+		self.positions = posout
+		self.atoms = newlabels
+
+
 	def bulk(self,ncells):
 		# 
 		# OLD ROUTINE TO CONSTRUCT BULK MATERIAL USING 
@@ -882,6 +977,11 @@ class Surface:
 			newlabels.append(self.unitcellatoms[i])
 		return newlabels
 
+	def __addatomsNEW(self, nl,base):
+		# Add unit cell atoms labels to atom label list
+		for i in range(len(base)):
+			nl.append(base[i])
+		return nl
 
 	def __uniqueNAIVE(self,newmat,oldmat,labels):
 
@@ -3962,10 +4062,10 @@ subPrimNE  = []
 print 
 print "Constructing bulk strucutre for Substrate..."
 subBigBulk = Surface(transM,positions,atoms,np.array((0,0,0)))
-subBigBulk.bulk(8)
+subBigBulk.bulkNEW(8)
 print "Constructing bulk strucutre for Deposit..."
 depBigBulk = Surface(transM1,positions1,atoms1,np.array((0,0,0)))
-depBigBulk.bulk(8)
+depBigBulk.bulkNEW(8)
 
 # Iterate over Miller indieces 
 for subMillerString in subMillerList:
@@ -3978,7 +4078,7 @@ for subMillerString in subMillerList:
 		nbulk = max(Miller)*2
 
 		Sub=Surface(transM,positions,atoms,Miller)
-		Sub.bulk(nbulk)
+		Sub.bulkNEW(nbulk)
 
 		Sub.construct()
 		Sub.plane()
@@ -4003,7 +4103,7 @@ for subMillerString in subMillerList:
 		nbulk = max(Miller1)*2
 
 		Dep = Surface(transM1,positions1,atoms1,Miller1)
-		Dep.bulk(nbulk)
+		Dep.bulkNEW(nbulk)
 		Dep.construct()
 		Dep.plane()
 		if not Dep.exists:
