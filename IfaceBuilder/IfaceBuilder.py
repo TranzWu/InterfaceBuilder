@@ -2151,6 +2151,10 @@ class Interface:
 #		# 3 was orginal
 		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
 		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
+		# Some more
+		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
+		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
+		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
 
 
 
@@ -2904,12 +2908,13 @@ class Interface:
 		
 		# Define resulting anticipatory vector
 		vector = avecS+avecD
+		vector = avecS
 
 		# Define spacing between layers as average of substrate and 
 		# deposit spacing
-		vector[2] /= 2
-		vector[0] /= 2
-		vector[1] /= 2
+#		vector[2] /= 2 enable if avecS+avecD
+#		vector[0] /= 2 enable if avecS+avecD
+#		vector[1] /= 2 enable if avecS+avecD
 		vn = np.linalg.norm(vector)
 
 		# Calculate cosine between vector and z-axis
@@ -2935,8 +2940,10 @@ class Interface:
 #		bfrac = covrad/lv
 		# end TEST 
 		#bfrac = 0.9
-		vector=vector*bfrac
+		bfrac = bfrac/lv
+		vector = vector*bfrac
 		#vector[2]=1.8024400000000007
+		#vector[2]=bfrac
 
 		
 		# Now, move the deposit according the resulting anticipatory 
@@ -3620,8 +3627,8 @@ class Interface:
 
 		return score
 
-
-def formatXYZ(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nL,mfit,\
+def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nL,mfit,\
+				     score,alignNo,iterNo,\
 			             writeGEN=False,\
                                      writeAIMS=False,writeGULP=False,\
 				     cstrlxD=0,cstrlxS=0,\
@@ -3637,6 +3644,55 @@ def formatXYZ(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nL,mfit,\
 	# cstrlxHD - hydrogens on deposit
 	# cstrlxHS - hydrogens on substrate
 	# 
+
+	norma = np.linalg.norm(iface.IfaceVecs[0])
+	normb = np.linalg.norm(iface.IfaceVecs[1])
+
+	cosphi = np.dot(iface.IfaceVecs[0],iface.IfaceVecs[1])/(norma*normb)
+	phi = m.acos(cosphi)
+	sinphi = m.sin(phi)
+
+	area = norma * normb * sinphi
+
+	# Find distance between substrate and deposit in straight line
+	subPos = iface.IfacePosSC[iface.idxSubH]
+	depPos = iface.IfacePosSC[iface.idxDepH]
+	topSub = max(subPos[:,2]) # Substrate layer in the interface
+	botDep = min(depPos[:,2]) # Deposit layer in the interface
+	SDdist = botDep - topSub
+
+#	if aligNo == 0 and confno == 0:
+	if iterNo == 1:
+		summaryFile = open('summary.txt','w')
+		summaryFileCSV = open('summary.csv','w')
+		summaryFile.write("%12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s\n"\
+			     %("Substrate","Sub. Orient.", "Deposit", "Dep. Orient.",\
+			     "Alignment","Conf. No",\
+		     	     "area","x - stress","y-stress","angle-stress","area-stress",\
+		   	     "score","S-D distance"))
+
+		summaryFileCSV.write("%12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s\n"\
+			     %("Substrate","Sub. Orient.", "Deposit", "Dep. Orient.",\
+			     "Alignment","Conf. No",\
+		     	     "area","x - stress","y-stress","angle-stress","area-stress",\
+		   	     "score","S-D distance"))
+
+
+	else:
+		summaryFile = open('summary.txt','a')
+		summaryFileCSV = open('summary.csv','a')
+
+	summaryFile.write("%12s   %12s   %12s   %12s   %12i   %12i   %12.2f   %12.2f   %12.2f   %12.2f   %12.2f   %12.2f   %12.2f\n"\
+			%(Sname,Sface,Dname,Dface,aligNo,confno,\
+			  area,mfit[0],mfit[1],mfit[2],mfit[3],score,SDdist))
+
+	summaryFileCSV.write("%12s , %12s , %12s , %12s , %12i , %12i , %12.2f , %12.2f , %12.2f , %12.2f , %12.2f , %12.2f , %12.2f\n"\
+			%(Sname,"'"+Sface+"'",Dname,"'"+Dface+"'",aligNo,confno,\
+			  area,mfit[0],mfit[1],mfit[2],mfit[3],score,SDdist))
+
+	summaryFile.close()
+	summaryFileCSV.close()
+		       
 	
 	#dirname = "%s%s-%s%s/%i"%(Dname,Dface,Sname,Sface,vecpairidx)
 	dirnameConf = "%s%s-%s%s-%i"%(Dname,Dface,Sname,Sface,confno)
@@ -4024,16 +4080,6 @@ def formatXYZ(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nL,mfit,\
 
 	#Write Interface, Deposit, Substarte atoms numbers, and area
 
-	norma = np.linalg.norm(iface.IfaceVecs[0])
-	normb = np.linalg.norm(iface.IfaceVecs[1])
-
-
-	cosphi = np.dot(iface.IfaceVecs[0],iface.IfaceVecs[1])/(norma*normb)
-	phi = m.acos(cosphi)
-	sinphi = m.sin(phi)
-
-	area = norma * normb * sinphi
-
 	fileIDX.write("%i:%i:%i\n"%(len(iface.IfacePosSC), len(iface.idxDepH),\
 			            len(iface.idxSubH)))
 	text="Outside idx:   "+"".join("%5i"% t for t in frozenidx)+"\n"
@@ -4141,9 +4187,10 @@ depBigBulk = Surface(transM1,positions1,atoms1,atomTyp,np.array((0,0,0)))
 depBigBulk.bulkNEW(8)
 
 # Iterate over Miller indieces 
+iterNo = 0
 for subMillerString in subMillerList:
 	for depMillerString in depMillerList:
-		 
+		newIndex = True
 		#MATERIAL 1
 		print "Constructing bulk Substrate"
 		Miller = getMillerFromString(subMillerString)
@@ -4280,7 +4327,7 @@ for subMillerString in subMillerList:
 			print "Misfits  : %11.2f%%   %11.2f%%   %9.2f%%   %9.2f%%"\
 					%(mu,mv,mang,marea)
 			counter += 1
-			misfitList.append([mu,mv,mang])
+			misfitList.append([mu,mv,mang,marea])
 		
 		print "CONSTRUCTING INTERFACE"
 		#Construct big planes for Substrate and Deposit
@@ -4363,8 +4410,7 @@ for subMillerString in subMillerList:
 
 		# Initialize variables
 		vecpairidx = 0   # counter for anticicipatory vector pairs
-		bond = np.arange(0.5,3.0,0.1) # range of bond lengths to scan for search of 
-					      # optimal Substrate-Deposit separation
+
 		confnor = range(nConf) # number of configurations to consider
 		#fparam = 1         # f-parameter for scoring function
 		genHD = False       # generate hydrogens on Deposit?
@@ -4372,6 +4418,11 @@ for subMillerString in subMillerList:
 		#capAtmS = "Cl"
 		#capAtmD = "H"
 		atomicRadius = (subAtRad + depAtRad)/2 
+
+		bond = np.arange(atomicRadius-0.5,atomicRadius+1.0,0.1) # range of bond lengths to scan for search of 
+					      # optimal Substrate-Deposit separation
+#		bond = np.arange(0.5,3.0,0.1) 
+
 		wflist = [fparam]  # list of f-parameters for Scoring function
 		#skipStep1 = True # option to skip Step 1. You must specify bondlist 
 		#                   # by hand below
@@ -4379,8 +4430,8 @@ for subMillerString in subMillerList:
 		bondlist = []      # list for Substrate-Deposit optimal sepration length
 		if skipStep1:
 			for i in resmat:
-				bondlist.append(1.2)
-			#	bondlist = [0.9,1.6,1.9,1.4,2.0]
+				bondlist.append(atomicRadius*2)
+#			bondlist = [0.9,2.2,1.3,1.4,2.2]
 
 		# Start generating structures
 		# Step 1: Optimal distance between Substrate and Deposit 
@@ -4406,13 +4457,13 @@ for subMillerString in subMillerList:
 				bscoreS=[]
 				bscoreD=[]
 				bscoreSD=[]
-				fS=open("%s/DIST/OUTPUT-S-%i.txt"%(vecpairidx,scoreDirName),'w')
-				fD=open("%s/DIST/OUTPUT-D-%i.txt"%(vecpairidx,scoreDirName),'w')
+				fS=open("%s/DIST/OUTPUT-S-%i.txt"%(scoreDirName,vecpairidx),'w')
+				fD=open("%s/DIST/OUTPUT-D-%i.txt"%(scoreDirName,vecpairidx),'w')
 				fSD=open("%s/DIST/OUTPUT-SD-%i.txt"%(scoreDirName,vecpairidx),'w')
 				for i in bond:
 					iface = Interface(vecsDeposit[0],vecsSubstrate[0],\
 						     Dep,Sub,vecpair,i,fparam,atomicRadius,False,\
-						     False,False,False)
+						     False,False,False,False)
 					s1=iface.sc1
 					s2=iface.sc2	
 					sca=(s1+s2)/2
@@ -4436,16 +4487,17 @@ for subMillerString in subMillerList:
 
 				vecpairidx += 1
 		print "BOND LIST",bondlist
-		# Step 2: Generate configurations
+		# Step 2: Generte configurations
 		# For every anticipatory vector pair in "resmat" generate number of structures
 		# given in "confnor", setting the spacing between them to one from "bondlist" 
 		# found in step 1.
 
 		vecpairidx = 0 
 		for vecpair in resmat:
+			aligNo = vecpairidx
 			print
 			print "***************************************"
-			print "Working on Alignment no. %i out of %i"%(vecpairidx+1,len(resmat))
+			print "Working on Alignment no. %i out of %i"%(aligNo+1, len(resmat))
 			print "***************************************"
 			print
 			fS=open("%s/OUTPUT-S-%i.txt"%(scoreDirName,vecpairidx),'w')
@@ -4461,8 +4513,10 @@ for subMillerString in subMillerList:
 				resultstmpD=[]
 				resultstmpSD=[]
 				for confno in confnor:
+					iterNo += 1 # Mark iteration no to be used in mkOutput to create summary.txt file
 					print
 					print "Configuration no. %5i"%confno
+
 					i=bondlist[vecpairidx]
 					iface = Interface(vecsDeposit[confno],\
 							vecsSubstrate[confno],Dep,Sub,\
@@ -4476,11 +4530,13 @@ for subMillerString in subMillerList:
 					resultstmpD.append(s1)
 					resultstmpS.append(s2)
 					resultstmpSD.append(sca)
+
 					i=confno
 					mfit = misfitList[i]
-					formatXYZ(iface,i,depCIF[0:-4],depMillerString,\
+					mkOutput(iface,i,depCIF[0:-4],depMillerString,\
 							subCIF[0:-4],subMillerString,\
-							vecpairidx,nL,mfit,\
+							vecpairidx,nL,mfit,sca,\
+							aligNo,iterNo,\
 							writeGEN=False,\
 							writeAIMS=True,\
 							writeGULP=False,\
@@ -4579,7 +4635,4 @@ fileF.close()
 for i in range(len(misfitList)):
 	n = ((misfitList[i][0]**2) + (misfitList[i][1]**2))**0.5
 	print "%i   %12.6f"%(i,n)
-
-
-
 
