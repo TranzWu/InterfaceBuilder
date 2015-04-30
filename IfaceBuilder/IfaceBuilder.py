@@ -74,7 +74,11 @@ def readInput(inputFile):
 
 	line = file.readline()
 	line = line.split()
-	nL = float(line[1])
+	nLS = float(line[1])
+
+	line = file.readline()
+	line = line.split()
+	nLD = float(line[1])
 
 	line = file.readline()
 	line = line.split()
@@ -98,7 +102,7 @@ def readInput(inputFile):
 	else:
 		print "Value for skipStep1 not recognized"
 		exit()
-
+	# Read Poisson ratio
 	line = file.readline()
 	line = line.split()
 	tmp = line[1]
@@ -110,11 +114,23 @@ def readInput(inputFile):
 		print "Value for poissonRatio not recognized"
 		exit()
 
+	# Read if we want to split Substrate
+	line = file.readline()
+	line = line.split()
+	tmp = line[1]
+	if tmp == "True":
+		splitS = True
+	elif tmp == "False":
+		splitS = False
+	else:
+		print "Value for splitS not recognized"
+		exit()
+
 	return subCIF, subMillerString,\
 	       depCIF, depMillerString,\
 	       maxArea, areaThres, vecThres, angleThres,\
-	       capAtmS, capAtmD, fparam, nL, nConf, subAtRad, depAtRad,\
-	       skipStep1, poissonRatio
+	       capAtmS, capAtmD, fparam, nLS, nLD, nConf, subAtRad, depAtRad,\
+	       skipStep1, poissonRatio, splitS
 
 def getMillerFromString(millerString):
 
@@ -2049,8 +2065,8 @@ def CheckListDuplicates(inlist, elem, in1, in2, in3, in4, in5, in6):
 
 class Interface:
 	def __init__(self,vecDep,vecSub,Deposit,Substrate,vecpair,bfrac,wbond,\
-	    	     atomicRadius, nL, capAtD, capAtS, genHD=True,genHS=True,\
-		     poissonRatio=True):
+	    	     atomicRadius, nLS, nLD, capAtD, capAtS, genHD=True,genHS=True,\
+		     poissonRatio=True,splitS=False):
 
 		# Deposit surface and atoms below it
 		posDepBlk = Deposit.planeposblk.copy()
@@ -2084,7 +2100,8 @@ class Interface:
 
 		periodic = True
 		#periodic = False
-		nlayers = nL# 0 for scoring func - gives two same surfaces for
+		nlayersS = nLS# 0 for scoring func - gives two same surfaces for
+		nlayersD = nLD
 #					SiO2
 #		nlayers = 14# 0 for scoring func
 
@@ -2094,7 +2111,7 @@ class Interface:
 						 self.__CreateSurface\
 				                (posDepBlk,DepAtomsBlk,\
 				                 self.vecDep[0],self.vecDep[1],\
-						 self.Depavecs,nlayers,\
+						 self.Depavecs,nlayersD,\
 						 DepNneighuq,periodic,\
 						 genHD,genHS)
 
@@ -2107,7 +2124,7 @@ class Interface:
 		 	 			self.__CreateSurface\
 				                (posSubBlk,SubAtomsBlk,\
 				                 self.vecSub[0],self.vecSub[1],\
-						 self.Subavecs,nlayers,\
+						 self.Subavecs,nlayersS,\
 						 SubNneighuq,periodic,\
 						 genHD,genHS)
 
@@ -2143,7 +2160,8 @@ class Interface:
 
 		if capAtD or capAtS:
 			self.IfaceAtmSC = self.__addCapAtoms(self.IfacePosSC,\
-					self.IfaceAtmSC, capAtD, capAtS) 
+					self.IfaceAtmSC, self.idxDep, self.idxSub,\
+					capAtD, capAtS, splitS) 
 		
 		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
 		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
@@ -2161,14 +2179,16 @@ class Interface:
 		### BEGIN FOR SCORING FUNC
 		#print "STARTING GENERATING STRUCTURES FOR SCORING FUNCTION"
 		print "Generating structures for scoring function"
-		nlayers = 0# 0 for scoring func
-		nlayers2 = 5
+		nlayersS = 0# 0 for scoring func
+		nlayersD = 0# 0 for scoring func
+		nlayersS2 = 5
+		nlayersD2 = 5
 
 		DSurfPos,DSurfAtm,DepavecsR,vecDepR,DH =\
 						 self.__CreateSurface\
 				                (posDepBlk,DepAtomsBlk,\
 				                 self.vecDep[0],self.vecDep[1],\
-						 self.Depavecs,nlayers,\
+						 self.Depavecs,nlayersD,\
 						 DepNneighuq,periodic,\
 						 genHD,genHS)
 
@@ -2177,7 +2197,7 @@ class Interface:
 						 self.__CreateSurface\
 				                (posDepBlk,DepAtomsBlk,\
 				                 self.vecDep[0],self.vecDep[1],\
-						 self.Depavecs,nlayers2,\
+						 self.Depavecs,nlayersD2,\
 						 DepNneighuq,periodic,\
 						 genHD,genHS)
 
@@ -2192,7 +2212,7 @@ class Interface:
 		 	 			self.__CreateSurface\
 				                (posSubBlk,SubAtomsBlk,\
 				                 self.vecSub[0],self.vecSub[1],\
-						 self.Subavecs,nlayers,\
+						 self.Subavecs,nlayersS,\
 						 SubNneighuq,periodic,\
 						 genHD,genHS)
 
@@ -2201,7 +2221,7 @@ class Interface:
 		 	 			self.__CreateSurface\
 				                (posSubBlk,SubAtomsBlk,\
 				                 self.vecSub[0],self.vecSub[1],\
-						 self.Subavecs,nlayers2,\
+						 self.Subavecs,nlayersS2,\
 						 SubNneighuq,periodic,\
 						 genHD,genHS)
 
@@ -3129,7 +3149,8 @@ class Interface:
 
 		return pos
 
-	def __addCapAtoms(self, pos, labels, capAtD, capAtS):
+	def __addCapAtoms(self, pos, labels, idxDep, idxSub, \
+			  capAtD, capAtS, splitS=False):
 
 		thresh = 0.1
 
@@ -3139,8 +3160,25 @@ class Interface:
 		idxtop = pos[:,2] >= top - 6*thresh
 		idxbot = pos[:,2] <= bottom + thresh
 
+		if splitS:
+			sub = pos[idxSub]
+			topSub = max(sub[:,2])
+			botSub = min(sub[:,2])
+			midSub = (topSub-botSub)/2
+			# indices of the upper half of substrate
+			idxUp  = [(pos[:,2] < topSub + thresh) & (pos[:,2] >  midSub - thresh)] 
+			# indices of the lower half of substrate
+			idxLow = [(pos[:,2] > bottom - thresh) & (pos[:,2] <= midSub + thresh)]
+
+			botSk = round(min(pos[idxUp][:,2]),4)
+			mid = round(max(pos[idxLow][:,2]),4)
+			# find indices of the only thin layers on top of top and middle slabs
+			idxbotSk = np.around(pos[:,2],4) == botSk
+			idxmid  = np.around(pos[:,2],4) == mid
+
+
 		# Substitute labels in Deposit
-		if capAtD:
+		if capAtD and not splitS:
 			# Check if capAtD in atomTyp
 			maxType = max(self.atomTyp)
 			types = self.atomTyp.values()
@@ -3157,7 +3195,7 @@ class Interface:
 					labels[i] = atIdx
 
 		# Substitute labels in Substrate
-		if capAtS:
+		if capAtS and not splitS:
 			# Check if capAtD in atomTyp
 			maxType = max(self.atomTyp)
 			types = self.atomTyp.values()
@@ -3167,10 +3205,28 @@ class Interface:
 			else:
 				atIdx = types.index(capAtS)
 
-
-
 			for i in range(len(idxbot)):
 				atom = idxbot[i]
+				if atom:
+					labels[i] = atIdx
+
+		# When substarte is split in two parts
+		if splitS:
+			maxType = max(self.atomTyp)
+			types = self.atomTyp.values()
+			if capAtS not in types:
+				self.atomTyp[maxType+1] = capAtS
+				atIdx = maxType+1
+			else:
+				atIdx = types.index(capAtS)
+
+			for i in range(len(idxmid)):
+				atom = idxmid[i]
+				if atom:
+					labels[i] = atIdx
+
+			for i in range(len(idxbotSk)):
+				atom = idxbotSk[i]
 				if atom:
 					labels[i] = atIdx
 
@@ -3627,7 +3683,7 @@ class Interface:
 
 		return score
 
-def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nL,mfit,\
+def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				     score,alignNo,iterNo,\
 			             writeGEN=False,\
                                      writeAIMS=False,writeGULP=False,\
@@ -3898,7 +3954,7 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nL,mfit,\
 #		bot  = round(order[cstrlxS-1],6) # bottom atom (substrate)
 #		bot += threshold
 		frozenidx = []
-		bot = nL/3.0
+		bot = nLS/3.0
 
 	if (cstrlxD):
 #		order  = np.sort(iface.IfacePosSC[iface.idxDep,2])
@@ -3906,18 +3962,18 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nL,mfit,\
 #		top = round(order[(-1*cstrlxD)-1],6) # top atom (deposit)
 #		top -= threshold
 		frozenidx = []
-		top = nL + (2*(nL/3.0))
+		top = nLD + (2*(nLD/3.0))
 
 	# Freeze the middle atoms
 	# Freeze 1/3 of the atom in S and D
 	# S: 1/3 * nL :  2/3 *nL
 	# D: nL + 1/3 * nL : nl+2/3 * nL
 
-	mBottomS = nL/3.0 #middle later Bottom of Substrate
-	mTopS    = 2*(nL/3.0)
+	mBottomS = nLS/3.0 #middle later Bottom of Substrate
+	mTopS    = 2*(nLS/3.0)
 
-	mBottomD = nL + (nL/3.0)
-	mTopD    = nL + (2*(nL/3.0))
+	mBottomD = nLD + (nLD/3.0)
+	mTopD    = nLD + (2*(nLD/3.0))
 
 	for i in range(len(iface.IfacePosSC)):
 		atom = iface.atomTyp[iface.IfaceAtmSC[i]]
@@ -4156,13 +4212,13 @@ atomTyp = {}
 subCIF, subMiller, \
 depCIF, depMiller, \
 maxArea, areaThres, vecThres, angleThres,\
-capAtmS, capAtmD, fparam, nL, nConf, subAtRad, depAtRad,\
-skipStep1, poissonRatio = readInput(inputFile)
+capAtmS, capAtmD, fparam, nLS, nLD, nConf, subAtRad, depAtRad,\
+skipStep1, poissonRatio, splitS = readInput(inputFile)
 print 
 print "Substrate CIF..."
-i,transM,atoms,positions,atomTyp=ReadCIF(subCIF,atomTyp)
+i,transM,atoms,positions,atomTyp = ReadCIF(subCIF,atomTyp)
 print "Deposit CIF..."
-i1,transM1,atoms1,positions1,atomTyp=ReadCIF(depCIF,atomTyp)
+i1,transM1,atoms1,positions1,atomTyp = ReadCIF(depCIF,atomTyp)
 
 subMillerList = createMillerList(subMiller)
 depMillerList = createMillerList(depMiller)
@@ -4463,7 +4519,7 @@ for subMillerString in subMillerList:
 				for i in bond:
 					iface = Interface(vecsDeposit[0],vecsSubstrate[0],\
 						     Dep,Sub,vecpair,i,fparam,atomicRadius,False,\
-						     False,False,False,False)
+						     False,False,False,False,False,False)
 					s1=iface.sc1
 					s2=iface.sc2	
 					sca=(s1+s2)/2
@@ -4520,9 +4576,9 @@ for subMillerString in subMillerList:
 					i=bondlist[vecpairidx]
 					iface = Interface(vecsDeposit[confno],\
 							vecsSubstrate[confno],Dep,Sub,\
-							vecpair,i,wf,atomicRadius, nL,\
+							vecpair,i,wf,atomicRadius, nLS, nLD,\
 							capAtmD, capAtmS,\
-							genHD,genHS,poissonRatio)
+							genHD,genHS,poissonRatio,splitS)
 					s1=iface.sc1
 					s2=iface.sc2	
 					sca=(s1+s2)/2
@@ -4535,7 +4591,7 @@ for subMillerString in subMillerList:
 					mfit = misfitList[i]
 					mkOutput(iface,i,depCIF[0:-4],depMillerString,\
 							subCIF[0:-4],subMillerString,\
-							vecpairidx,nL,mfit,sca,\
+							vecpairidx,nLS,nLD,mfit,sca,\
 							aligNo,iterNo,\
 							writeGEN=False,\
 							writeAIMS=True,\
