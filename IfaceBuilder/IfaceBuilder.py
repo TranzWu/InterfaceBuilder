@@ -119,18 +119,26 @@ def readInput(inputFile):
 	line = line.split()
 	tmp = line[1]
 	if tmp == "True":
-		splitS = True
+		sandwich = True
 	elif tmp == "False":
-		splitS = False
+		sandwich = False
 	else:
-		print "Value for splitS not recognized"
+		print "Value for sandwich not recognized"
 		exit()
+
+	# Read nVac
+	line = file.readline()
+	line = line.split()
+	nVac= int(line[1])
+	if nVac <= 1: nVac = 1
+
+
 
 	return subCIF, subMillerString,\
 	       depCIF, depMillerString,\
 	       maxArea, areaThres, vecThres, angleThres,\
 	       capAtmS, capAtmD, fparam, nLS, nLD, nConf, subAtRad, depAtRad,\
-	       skipStep1, poissonRatio, splitS
+	       skipStep1, poissonRatio, sandwich, nVac
 
 def getMillerFromString(millerString):
 
@@ -2065,8 +2073,8 @@ def CheckListDuplicates(inlist, elem, in1, in2, in3, in4, in5, in6):
 
 class Interface:
 	def __init__(self,vecDep,vecSub,Deposit,Substrate,vecpair,bfrac,wbond,\
-	    	     atomicRadius, nLS, nLD, capAtD, capAtS, genHD=True,genHS=True,\
-		     poissonRatio=True,splitS=False):
+	    	     atomicRadius, nLS, nLD, capAtD, capAtS, sandwich, genHD=True,genHS=True,\
+		     poissonRatio=True):
 
 		# Deposit surface and atoms below it
 		posDepBlk = Deposit.planeposblk.copy()
@@ -2140,6 +2148,7 @@ class Interface:
 					      vecpair,vecSubR)
 		# Make vectors globaly available:
 		self.IfaceVecs = [vecSubR[0],vecSubR[1],alignvec]
+
 		# If vectors are passing through rectangular interface, 
 		# translate those atoms so PBC conditions can be met.
 
@@ -2158,10 +2167,31 @@ class Interface:
 			self.idxDepH = self.idxDep
 			self.idxSubH = self.idxSub
 
+
 		if capAtD or capAtS:
+			if sandwich: capAtD = False
 			self.IfaceAtmSC = self.__addCapAtoms(self.IfacePosSC,\
-					self.IfaceAtmSC, self.idxDep, self.idxSub,\
-					capAtD, capAtS, splitS) 
+					self.IfaceAtmSC, capAtD, capAtS) 
+
+		if sandwich:
+			botSub = min(self.IfacePosSC[:,2])
+			topDep = max(self.IfacePosSC[:,2])
+        		topSub = max(self.IfacePosSC[self.idxSubH][:,2]) # Substrate layer in the interface
+	       		botDep = min(self.IfacePosSC[self.idxDepH][:,2]) # Deposit layer in the interface
+		        SDdist = botDep - topSub
+			moveDist = topDep - botSub + SDdist
+			newSub = self.IfacePosSC[self.idxSubH].copy()
+			newSubLabels = self.IfaceAtmSC[self.idxSubH].copy()
+			newSub[:,2] -= topSub
+			newSub[:,2] *= -1
+			newSub[:,2] += moveDist
+			newIdxSub = np.arange(1,len(newSub)+1)
+			newIdxSub += self.idxSubH[-1]
+			self.idxSubH = np.concatenate((self.idxSubH,newIdxSub))
+			self.IfacePosSC = np.concatenate((self.IfacePosSC, newSub))
+			self.IfaceAtmSC = np.concatenate((self.IfaceAtmSC, newSubLabels))
+			self.IfaceVecs[2][-1] += topSub - botSub + SDdist
+
 		
 		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
 		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
@@ -2991,8 +3021,8 @@ class Interface:
 		posout[0:len(posDep)] = posDeptmp
 		posout[len(posDep):] = posSub
 
-		idxDep = range(0,len(posDep))
-		idxSub = range(len(posDep),len(posout))
+		idxDep = np.arange(0,len(posDep))
+		idxSub = np.arange(len(posDep),len(posout))
 
 		#Create labels for the interface
 		#labels = labDep + labSub
@@ -3016,6 +3046,12 @@ class Interface:
 		top = max(posout[:,2])
 		ratio = top/vector[2]
 		vector *= ratio
+
+		topSub = max(posout[idxSub][:,2])
+		botDep = min(posout[idxDep][:,2])
+		spacing = botDep - topSub
+
+		vector[-1] += spacing
 
 		return posout, labels, idxDep, idxSub, np.array(vector)
 
@@ -3149,8 +3185,7 @@ class Interface:
 
 		return pos
 
-	def __addCapAtoms(self, pos, labels, idxDep, idxSub, \
-			  capAtD, capAtS, splitS=False):
+	def __addCapAtoms(self, pos, labels, capAtD, capAtS):
 
 		thresh = 0.1
 
@@ -3160,25 +3195,8 @@ class Interface:
 		idxtop = pos[:,2] >= top - 6*thresh
 		idxbot = pos[:,2] <= bottom + thresh
 
-		if splitS:
-			sub = pos[idxSub]
-			topSub = max(sub[:,2])
-			botSub = min(sub[:,2])
-			midSub = (topSub-botSub)/2
-			# indices of the upper half of substrate
-			idxUp  = [(pos[:,2] < topSub + thresh) & (pos[:,2] >  midSub - thresh)] 
-			# indices of the lower half of substrate
-			idxLow = [(pos[:,2] > bottom - thresh) & (pos[:,2] <= midSub + thresh)]
-
-			botSk = round(min(pos[idxUp][:,2]),4)
-			mid = round(max(pos[idxLow][:,2]),4)
-			# find indices of the only thin layers on top of top and middle slabs
-			idxbotSk = np.around(pos[:,2],4) == botSk
-			idxmid  = np.around(pos[:,2],4) == mid
-
-
 		# Substitute labels in Deposit
-		if capAtD and not splitS:
+		if capAtD:
 			# Check if capAtD in atomTyp
 			maxType = max(self.atomTyp)
 			types = self.atomTyp.values()
@@ -3195,7 +3213,7 @@ class Interface:
 					labels[i] = atIdx
 
 		# Substitute labels in Substrate
-		if capAtS and not splitS:
+		if capAtS:
 			# Check if capAtD in atomTyp
 			maxType = max(self.atomTyp)
 			types = self.atomTyp.values()
@@ -3207,26 +3225,6 @@ class Interface:
 
 			for i in range(len(idxbot)):
 				atom = idxbot[i]
-				if atom:
-					labels[i] = atIdx
-
-		# When substarte is split in two parts
-		if splitS:
-			maxType = max(self.atomTyp)
-			types = self.atomTyp.values()
-			if capAtS not in types:
-				self.atomTyp[maxType+1] = capAtS
-				atIdx = maxType+1
-			else:
-				atIdx = types.index(capAtS)
-
-			for i in range(len(idxmid)):
-				atom = idxmid[i]
-				if atom:
-					labels[i] = atIdx
-
-			for i in range(len(idxbotSk)):
-				atom = idxbotSk[i]
 				if atom:
 					labels[i] = atIdx
 
@@ -3684,7 +3682,7 @@ class Interface:
 		return score
 
 def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
-				     score,alignNo,iterNo,\
+				     score,alignNo,iterNo,nVac,\
 			             writeGEN=False,\
                                      writeAIMS=False,writeGULP=False,\
 				     cstrlxD=0,cstrlxS=0,\
@@ -3716,6 +3714,22 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 	topSub = max(subPos[:,2]) # Substrate layer in the interface
 	botDep = min(depPos[:,2]) # Deposit layer in the interface
 	SDdist = botDep - topSub
+
+#	if sandwich:
+#		botSub = min(subPos[:,2])
+#		topDep = max(depPos[:,2])
+#		moveDist = topDep - botSub + SDdist
+#		newSub = iface.IfacePosSC[iface.idxSubH].copy()
+#		newSubLabels = iface.IfaceAtmSC[iface.idxSubH].copy()
+#		newSub[:,2] -= topSub
+#		newSub[:,2] *= -1
+#		newSub[:,2] += moveDist
+#		newIdxSub = np.arange(1,len(newSub)+1)
+#		newIdxSub += iface.idxSubH[-1]
+#		iface.idxSubH = np.concatenate((iface.idxSubH,newIdxSub))
+#		iface.IfacePosSC = np.concatenate((iface.IfacePosSC, newSub))
+#		iface.IfaceAtmSC = np.concatenate((iface.IfaceAtmSC, newSubLabels))
+
 
 #	if aligNo == 0 and confno == 0:
 	if iterNo == 1:
@@ -3762,10 +3776,6 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 	ftmp.write("%5i   %5i\n"%(vecpair[1],vecpair[2]))
 	ftmp.close()
 	
-	# Amount of vacuum for AIMS and DFTB+ output
-	# vac - multiplayer of slab thickness 
-	vac = 4.0
-
 	if bondmod:
 		filename  = "%s/%s%s-%s%s-%2.1f.xyz"%(dirname,Dname,Dface,\
 			                   Sname,Sface,confno)
@@ -3866,9 +3876,9 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		             (iface.IfaceVecs[1][0],\
 			      iface.IfaceVecs[1][1],iface.IfaceVecs[1][2]))
 		fileAIMS.write("lattice_vector %12.6f  %12.6f  %12.6f\n"%\
-		             (iface.IfaceVecs[2][0]*vac,\
-			      iface.IfaceVecs[2][1]*vac,\
-			      iface.IfaceVecs[2][2]*vac))
+		             (iface.IfaceVecs[2][0]*nVac,\
+			      iface.IfaceVecs[2][1]*nVac,\
+			      iface.IfaceVecs[2][2]*nVac))
 
 		fileSAIMS.write("lattice_vector %12.6f  %12.6f  %12.6f\n"%\
 		             (iface.IfaceVecs[0][0],\
@@ -3877,9 +3887,9 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		             (iface.IfaceVecs[1][0],\
 			      iface.IfaceVecs[1][1],iface.IfaceVecs[1][2]))
 		fileSAIMS.write("lattice_vector %12.6f  %12.6f  %12.6f\n"%\
-		             (iface.IfaceVecs[2][0]*vac,\
-			      iface.IfaceVecs[2][1]*vac,\
-			      iface.IfaceVecs[2][2]*vac))
+		             (iface.IfaceVecs[2][0]*nVac,\
+			      iface.IfaceVecs[2][1]*nVac,\
+			      iface.IfaceVecs[2][2]*nVac))
 
 		fileDAIMS.write("lattice_vector %12.6f  %12.6f  %12.6f\n"%\
 		             (iface.IfaceVecs[0][0],\
@@ -3888,9 +3898,9 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		             (iface.IfaceVecs[1][0],\
 			      iface.IfaceVecs[1][1],iface.IfaceVecs[1][2]))
 		fileDAIMS.write("lattice_vector %12.6f  %12.6f  %12.6f\n"%\
-		             (iface.IfaceVecs[2][0]*vac,\
-			      iface.IfaceVecs[2][1]*vac,\
-			      iface.IfaceVecs[2][2]*vac))
+		             (iface.IfaceVecs[2][0]*nVac,\
+			      iface.IfaceVecs[2][1]*nVac,\
+			      iface.IfaceVecs[2][2]*nVac))
 	
 	# Outputting GULP
 	if writeGULP:
@@ -3906,9 +3916,9 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
                              (iface.IfaceVecs[1][0],\
                               iface.IfaceVecs[1][1],iface.IfaceVecs[1][2]))
 		fileGULP.write("%12.6f  %12.6f  %12.6f\n"%\
-		             (iface.IfaceVecs[2][0]*vac,\
-			      iface.IfaceVecs[2][1]*vac,\
-			      iface.IfaceVecs[2][2]*vac))
+		             (iface.IfaceVecs[2][0]*nVac,\
+			      iface.IfaceVecs[2][1]*nVac,\
+			      iface.IfaceVecs[2][2]*nVac))
 		fileGULP.write("0 0 0 0 0 0\n")
 		fileGULP.write("cartesian\n")
 
@@ -3923,9 +3933,9 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
                              (iface.IfaceVecs[1][0],\
                               iface.IfaceVecs[1][1],iface.IfaceVecs[1][2]))
 		fileGULPS.write("%12.6f  %12.6f  %12.6f\n"%\
-		             (iface.IfaceVecs[2][0]*vac,\
-			      iface.IfaceVecs[2][1]*vac,\
-			      iface.IfaceVecs[2][2]*vac))
+		             (iface.IfaceVecs[2][0]*nVac,\
+			      iface.IfaceVecs[2][1]*nVac,\
+			      iface.IfaceVecs[2][2]*nVac))
 		fileGULPS.write("0 0 0 0 0 0\n")
 		fileGULPS.write("cartesian\n")
 
@@ -3940,9 +3950,9 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
                              (iface.IfaceVecs[1][0],\
                               iface.IfaceVecs[1][1],iface.IfaceVecs[1][2]))
 		fileGULPD.write("%12.6f  %12.6f  %12.6f\n"%\
-		             (iface.IfaceVecs[2][0]*vac,\
-			      iface.IfaceVecs[2][1]*vac,\
-			      iface.IfaceVecs[2][2]*vac))
+		             (iface.IfaceVecs[2][0]*nVac,\
+			      iface.IfaceVecs[2][1]*nVac,\
+			      iface.IfaceVecs[2][2]*nVac))
 		fileGULPD.write("0 0 0 0 0 0\n")
 		fileGULPD.write("cartesian\n")
 	#Find top and bottom layer
@@ -4213,7 +4223,7 @@ subCIF, subMiller, \
 depCIF, depMiller, \
 maxArea, areaThres, vecThres, angleThres,\
 capAtmS, capAtmD, fparam, nLS, nLD, nConf, subAtRad, depAtRad,\
-skipStep1, poissonRatio, splitS = readInput(inputFile)
+skipStep1, poissonRatio, sandwich, nVac = readInput(inputFile)
 print 
 print "Substrate CIF..."
 i,transM,atoms,positions,atomTyp = ReadCIF(subCIF,atomTyp)
@@ -4577,8 +4587,8 @@ for subMillerString in subMillerList:
 					iface = Interface(vecsDeposit[confno],\
 							vecsSubstrate[confno],Dep,Sub,\
 							vecpair,i,wf,atomicRadius, nLS, nLD,\
-							capAtmD, capAtmS,\
-							genHD,genHS,poissonRatio,splitS)
+							capAtmD, capAtmS,sandwich,\
+							genHD,genHS,poissonRatio)
 					s1=iface.sc1
 					s2=iface.sc2	
 					sca=(s1+s2)/2
@@ -4592,7 +4602,7 @@ for subMillerString in subMillerList:
 					mkOutput(iface,i,depCIF[0:-4],depMillerString,\
 							subCIF[0:-4],subMillerString,\
 							vecpairidx,nLS,nLD,mfit,sca,\
-							aligNo,iterNo,\
+							aligNo,iterNo,nVac,\
 							writeGEN=False,\
 							writeAIMS=True,\
 							writeGULP=False,\
