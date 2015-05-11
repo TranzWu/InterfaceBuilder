@@ -2173,13 +2173,14 @@ class Interface:
 			self.IfaceAtmSC = self.__addCapAtoms(self.IfacePosSC,\
 					self.IfaceAtmSC, capAtD, capAtS) 
 
+		botSub = min(self.IfacePosSC[:,2])
+		topDep = max(self.IfacePosSC[:,2])
+       		topSub = max(self.IfacePosSC[self.idxSubH][:,2]) # Substrate layer in the interface
+       		botDep = min(self.IfacePosSC[self.idxDepH][:,2]) # Deposit layer in the interface
+	        self.SDdist = botDep - topSub
+
 		if sandwich:
-			botSub = min(self.IfacePosSC[:,2])
-			topDep = max(self.IfacePosSC[:,2])
-        		topSub = max(self.IfacePosSC[self.idxSubH][:,2]) # Substrate layer in the interface
-	       		botDep = min(self.IfacePosSC[self.idxDepH][:,2]) # Deposit layer in the interface
-		        SDdist = botDep - topSub
-			moveDist = topDep - botSub + SDdist
+			moveDist = topDep - botSub + self.SDdist
 			newSub = self.IfacePosSC[self.idxSubH].copy()
 			newSubLabels = self.IfaceAtmSC[self.idxSubH].copy()
 			newSub[:,2] -= topSub
@@ -2190,9 +2191,8 @@ class Interface:
 			self.idxSubH = np.concatenate((self.idxSubH,newIdxSub))
 			self.IfacePosSC = np.concatenate((self.IfacePosSC, newSub))
 			self.IfaceAtmSC = np.concatenate((self.IfaceAtmSC, newSubLabels))
-			self.IfaceVecs[2][-1] += topSub - botSub + SDdist
+			self.IfaceVecs[2][-1] += topSub - botSub + self.SDdist
 
-		
 		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
 		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
 		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
@@ -2203,8 +2203,6 @@ class Interface:
 		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
 		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
 		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
-
-
 
 		### BEGIN FOR SCORING FUNC
 		#print "STARTING GENERATING STRUCTURES FOR SCORING FUNCTION"
@@ -3682,7 +3680,7 @@ class Interface:
 		return score
 
 def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
-				     score,alignNo,iterNo,nVac,\
+				     score,alignNo,iterNo,nVac,sandwich,\
 			             writeGEN=False,\
                                      writeAIMS=False,writeGULP=False,\
 				     cstrlxD=0,cstrlxS=0,\
@@ -3713,23 +3711,8 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 	depPos = iface.IfacePosSC[iface.idxDepH]
 	topSub = max(subPos[:,2]) # Substrate layer in the interface
 	botDep = min(depPos[:,2]) # Deposit layer in the interface
+	topDep = max(depPos[:,2]) # Top of deposit
 	SDdist = botDep - topSub
-
-#	if sandwich:
-#		botSub = min(subPos[:,2])
-#		topDep = max(depPos[:,2])
-#		moveDist = topDep - botSub + SDdist
-#		newSub = iface.IfacePosSC[iface.idxSubH].copy()
-#		newSubLabels = iface.IfaceAtmSC[iface.idxSubH].copy()
-#		newSub[:,2] -= topSub
-#		newSub[:,2] *= -1
-#		newSub[:,2] += moveDist
-#		newIdxSub = np.arange(1,len(newSub)+1)
-#		newIdxSub += iface.idxSubH[-1]
-#		iface.idxSubH = np.concatenate((iface.idxSubH,newIdxSub))
-#		iface.IfacePosSC = np.concatenate((iface.IfacePosSC, newSub))
-#		iface.IfaceAtmSC = np.concatenate((iface.IfaceAtmSC, newSubLabels))
-
 
 #	if aligNo == 0 and confno == 0:
 	if iterNo == 1:
@@ -3754,11 +3737,11 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 
 	summaryFile.write("%12s   %12s   %12s   %12s   %12i   %12i   %12.2f   %12.2f   %12.2f   %12.2f   %12.2f   %12.2f   %12.2f\n"\
 			%(Sname,Sface,Dname,Dface,aligNo,confno,\
-			  area,mfit[0],mfit[1],mfit[2],mfit[3],score,SDdist))
+			  area,mfit[0],mfit[1],mfit[2],mfit[3],score,iface.SDdist))
 
 	summaryFileCSV.write("%12s , %12s , %12s , %12s , %12i , %12i , %12.2f , %12.2f , %12.2f , %12.2f , %12.2f , %12.2f , %12.2f\n"\
 			%(Sname,"'"+Sface+"'",Dname,"'"+Dface+"'",aligNo,confno,\
-			  area,mfit[0],mfit[1],mfit[2],mfit[3],score,SDdist))
+			  area,mfit[0],mfit[1],mfit[2],mfit[3],score,iface.SDdist))
 
 	summaryFile.close()
 	summaryFileCSV.close()
@@ -3958,21 +3941,52 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 	#Find top and bottom layer
 	threshold = 0.2 # define threshol to add to top and bottom for 
 	                # float comparisons
+	frozenidx=[]
 	if (cstrlxS):
 #		order  = np.sort(iface.IfacePosSC[iface.idxSub,2])
 #		order = np.unique(order)
 #		bot  = round(order[cstrlxS-1],6) # bottom atom (substrate)
 #		bot += threshold
-		frozenidx = []
 		bot = nLS/3.0
+		if sandwich:
+			topS = topDep + iface.SDdist + 2*bot #1/3 of the top part of substarte in sandwich
+			botS = botDep - iface.SDdist - 2*bot #1/3 of the bottom part of substrate
+			topI = iface.IfacePosSC[:,2] > topS
+			botI = iface.IfacePosSC[:,2] < botS
+
+			for i in range(len(topI)):
+				if topI[i]:
+					frozenidx.append(i)
+
+		else:
+			botI = iface.IfacePosSC[:,2] < bot
+
+		for i in range(len(botI)):
+			if botI[i]:
+				frozenidx.append(i)
 
 	if (cstrlxD):
 #		order  = np.sort(iface.IfacePosSC[iface.idxDep,2])
 #		order = np.unique(order)
 #		top = round(order[(-1*cstrlxD)-1],6) # top atom (deposit)
 #		top -= threshold
-		frozenidx = []
-		top = nLD + (2*(nLD/3.0))
+		top = nLS +iface.SDdist + (2*(nLD/3.0))
+		if sandwich:
+			dFrac = nLD/3.0
+			mTop = topDep - dFrac
+			mBot = botDep + dFrac
+			mFrozenI=(iface.IfacePosSC[:,2] <mTop) & (iface.IfacePosSC[:,2] >mBot)
+
+			for i in range(len(mFrozenI)):
+				if mFrozenI[i]:
+					frozenidx.append(i)
+		else: 
+			topI = iface.IfacePosSC[:,2] > top
+
+			for i in range(len(topI)):
+				if topI[i]:
+					frozenidx.append(i)
+	frozenidx=np.array(frozenidx)
 
 	# Freeze the middle atoms
 	# Freeze 1/3 of the atom in S and D
@@ -4000,14 +4014,12 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				fileAIMS.write("constrain_relaxation x\n")
 				fileAIMS.write("constrain_relaxation y\n")
 
-			if (((cstrlxS) or (cstrlxD)) and \
-			    ((round(z,6) >= top) or (round(z,6) <= bot) )):
+			if i in frozenidx:
 				fileAIMS.write\
 				("constrain_relaxation x\n")
 				fileAIMS.write\
 				("constrain_relaxation y\n")
 
-				frozenidx.append(i+1)
 #			# Constrain middle layers
 #			if ((round(z,6) >= mBottomS ) and (round(z,6) <= mTopS) ):
 #				fileAIMS.write\
@@ -4602,7 +4614,7 @@ for subMillerString in subMillerList:
 					mkOutput(iface,i,depCIF[0:-4],depMillerString,\
 							subCIF[0:-4],subMillerString,\
 							vecpairidx,nLS,nLD,mfit,sca,\
-							aligNo,iterNo,nVac,\
+							aligNo,iterNo,nVac,sandwich,\
 							writeGEN=False,\
 							writeAIMS=True,\
 							writeGULP=False,\
