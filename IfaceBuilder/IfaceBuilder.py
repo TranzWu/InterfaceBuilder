@@ -3253,7 +3253,7 @@ class Interface:
 		# Scale the positons:
 		posout = posout * vec1scale * vec2scale
 
-		poissonRatio = True
+		#poissonRatio = True
 		if poissonRatio:
 			m1 = n1D/n1S # misfit in x
 			m2 = n2D/n2S # misfit in y
