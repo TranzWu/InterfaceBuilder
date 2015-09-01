@@ -3679,9 +3679,7 @@ class Interface:
 		natms = len(idx1)
 		dist = (np.linalg.norm(avecs1[0])+np.linalg.norm(avecs2[0]))/2
 	##	print "DIST IN SCORE7", dist
-		dist = 2.20
 		dist = atomicRadius
-		# MAKE THE REFERENCE DISTANCE THE LENGTH OF ALIGNEMENT VECTOR
 
 		blist = []
 		for i in idx1: # iterate surface atoms of material1
@@ -4633,9 +4631,9 @@ for subMillerString in subMillerList:
 		genHS = False      # generate hydrogens on Substrate?
 		#capAtmS = "Cl"
 		#capAtmD = "H"
-		atomicRadius = (subAtRad + depAtRad)/2 
+		atomicRadius = subAtRad + depAtRad
 
-		bond = np.arange(atomicRadius-0.5,atomicRadius+1.0,0.1) # range of bond lengths to scan for search of 
+		bond = np.arange((0.5*atomicRadius)-0.5,(0.5*atomicRadius)+1.0,0.1) # range of bond lengths to scan for search of 
 					      # optimal Substrate-Deposit separation
 #		bond = np.arange(0.5,3.0,0.1) 
 
