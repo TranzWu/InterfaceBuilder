@@ -4644,7 +4644,7 @@ for subMillerString in subMillerList:
 		bondlist = []      # list for Substrate-Deposit optimal sepration length
 		if skipStep1:
 			for i in resmat:
-				bondlist.append(atomicRadius*2)
+				bondlist.append(atomicRadius)
 #			bondlist = [0.9,2.2,1.3,1.4,2.2]
 
 		# Start generating structures
