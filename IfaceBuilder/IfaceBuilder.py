@@ -129,8 +129,8 @@ def readInput(inputFile):
 	# Read nVac
 	line = file.readline()
 	line = line.split()
-	nVac= int(line[1])
-	if nVac <= 1: nVac = 1
+	nVac= float(line[1])
+#	if nVac <= 1: nVac = 1
 
 
 
@@ -3819,6 +3819,7 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				     score,alignNo,iterNo,nVac,sandwich,\
 			             writeGEN=False,\
                                      writeAIMS=False,writeGULP=False,\
+				     writeVASP=False,\
 				     cstrlxD=0,cstrlxS=0,\
 				     cstrlxH=False,\
 				     bondmod=False): 
@@ -3842,6 +3843,13 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 
 	area = norma * normb * sinphi
 
+	natoms  = len(iface.IfacePosSC)
+	# in the case there is no hydrogens added - iface.idxSubH and 
+	# iface.idxDepH are set to iface.idxSub and iface.idxDep in
+	# class Interface
+	natomsS = len(iface.idxSubH) 
+	natomsD = len(iface.idxDepH)
+
 	# Find distance between substrate and deposit in straight line
 	subPos = iface.IfacePosSC[iface.idxSubH]
 	depPos = iface.IfacePosSC[iface.idxDepH]
@@ -3854,16 +3862,16 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 	if iterNo == 1:
 		summaryFile = open('summary.txt','w')
 		summaryFileCSV = open('summary.csv','w')
-		summaryFile.write("%12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s\n"\
+		summaryFile.write("%12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s\n"\
 			     %("Substrate","Sub. Orient.", "Deposit", "Dep. Orient.",\
 			     "Alignment","Conf. No",\
-		     	     "area","x - stress","y-stress","angle-stress","area-stress",\
+		     	     "area","nAtoms","nAtomsS","nAtomsD","x - stress","y-stress","angle-stress","area-stress",\
 		   	     "score","S-D distance"))
 
-		summaryFileCSV.write("%12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s\n"\
+		summaryFileCSV.write("%12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s\n"\
 			     %("Substrate","Sub. Orient.", "Deposit", "Dep. Orient.",\
 			     "Alignment","Conf. No",\
-		     	     "area","x - stress","y-stress","angle-stress","area-stress",\
+		     	     "area","nAtoms","nAtomsS","natomsD","x - stress","y-stress","angle-stress","area-stress",\
 		   	     "score","S-D distance"))
 
 
@@ -3871,18 +3879,17 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		summaryFile = open('summary.txt','a')
 		summaryFileCSV = open('summary.csv','a')
 
-	summaryFile.write("%12s   %12s   %12s   %12s   %12i   %12i   %12.2f   %12.2f   %12.2f   %12.2f   %12.2f   %12.2f   %12.2f\n"\
+	summaryFile.write("%12s   %12s   %12s   %12s   %12i   %12i   %12.2f   %12i   %12i   %12i   %12.2f   %12.2f   %12.2f   %12.2f   %12.3f   %12.2f\n"\
 			%(Sname,Sface,Dname,Dface,aligNo,confno,\
-			  area,mfit[0],mfit[1],mfit[2],mfit[3],score,iface.SDdist))
+			  area,natoms,natomsS,natomsD,mfit[0],mfit[1],mfit[2],mfit[3],score,iface.SDdist))
 
-	summaryFileCSV.write("%12s , %12s , %12s , %12s , %12i , %12i , %12.2f , %12.2f , %12.2f , %12.2f , %12.2f , %12.2f , %12.2f\n"\
+	summaryFileCSV.write("%12s , %12s , %12s , %12s , %12i , %12i , %12.2f , %12i , %12i , %12i , %12.2f , %12.2f , %12.2f , %12.2f , %12.3f , %12.2f\n"\
 			%(Sname,"'"+Sface+"'",Dname,"'"+Dface+"'",aligNo,confno,\
-			  area,mfit[0],mfit[1],mfit[2],mfit[3],score,iface.SDdist))
+			  area,natoms,natomsS,natomsD,mfit[0],mfit[1],mfit[2],mfit[3],score,iface.SDdist))
 
 	summaryFile.close()
 	summaryFileCSV.close()
 		       
-	
 	#dirname = "%s%s-%s%s/%i"%(Dname,Dface,Sname,Sface,vecpairidx)
 	dirnameConf = "%s%s-%s%s-%i"%(Dname,Dface,Sname,Sface,confno)
 	if bondmod:
@@ -3894,8 +3901,18 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 	ftmp = open("%s/vectors.txt"%dirname,'w')
 	ftmp.write("%5i   %5i\n"%(vecpair[1],vecpair[2]))
 	ftmp.close()
-	
+
+	# Calculate multiplayer for nVac:
+	# |z|' = |z| * nVacM
+	# nVacM = nVac/z
+	nz = np.linalg.norm(iface.IfaceVecs[2][2])
+	nVacM = nVac/nz
+
 	if bondmod:
+		confName  = "%s%s-%s%s-%2.1f"%(Dname,Dface,Sname,Sface,confno)
+		confNameS = "%s%s-%s%s-%2.1f-S"%(Dname,Dface,Sname,Sface,confno)
+		confNameD = "%s%s-%s%s-%2.1f-D"%(Dname,Dface,Sname,Sface,confno)
+
 		filename  = "%s/%s%s-%s%s-%2.1f.xyz"%(dirname,Dname,Dface,\
 			                   Sname,Sface,confno)
 		filenameS = "%s/%s%s-%s%s-%2.1f-S.xyz"%(dirname,Dname,Dface,\
@@ -3918,12 +3935,33 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 			filenameGULPD = "%s/%s%s-%s%s-%2.1f-D.gin"\
 				%(dirname,Dname,Dface,Sname,Sface,confno)
 
+		if writeVASP:
+			filenameVASP = "%s/%s%s-%s%s-%2.1f.POSCAR"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+			filenameSVASP = "%s/%s%s-%s%s-%2.1f-S.POSCAR"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+			filenameDVASP = "%s/%s%s-%s%s-%2.1f-D.POSCAR"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+
+			filenameVASP_POT = "%s/%s%s-%s%s-%2.1f.POTCAR"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+			filenameSVASP_POT = "%s/%s%s-%s%s-%2.1f-S.POTCAR"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+			filenameDVASP_POT = "%s/%s%s-%s%s-%2.1f-D.POTCAR"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+
+
+
 		# Index file with number of atoms in 
 		# Interface,Deposit and Substate, and the area
 		filenameIDX  = "%s/%s%s-%s%s-%2.1f.idx"%(dirname,Dname,Dface,\
 			                   Sname,Sface,confno)
 
 	else:
+		confName  = "%s%s-%s%s-%i"%(Dname,Dface,Sname,Sface,confno)
+		confNameS = "%s%s-%s%s-%i-S"%(Dname,Dface,Sname,Sface,confno)
+		confNameD = "%s%s-%s%s-%i-D"%(Dname,Dface,Sname,Sface,confno)
+
 		filename  = "%s/%s%s-%s%s-%i.xyz"%(dirname,Dname,Dface,\
 			                   Sname,Sface,confno)
 		filenameS = "%s/%s%s-%s%s-%i-S.xyz"%(dirname,Dname,Dface,\
@@ -3944,6 +3982,20 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				%(dirname,Dname,Dface,Sname,Sface,confno)
 			filenameGULPD = "%s/%s%s-%s%s-%i-D.gin"\
 				%(dirname,Dname,Dface,Sname,Sface,confno)
+		if writeVASP:
+			filenameVASP  = "%s/%s%s-%s%s-%i.POSCAR"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+			filenameSVASP = "%s/%s%s-%s%s-%i-S.POSCAR"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+			filenameDVASP = "%s/%s%s-%s%s-%i-D.POSCAR"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+			filenameVASP_POT  = "%s/%s%s-%s%s-%i.POTCAR"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+			filenameSVASP_POT = "%s/%s%s-%s%s-%i-S.POTCAR"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+			filenameDVASP_POT = "%s/%s%s-%s%s-%i-D.POTCAR"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+
 
 		# Index file with number of atoms in 
 		# Interface,Deposit and Substate
@@ -3962,15 +4014,17 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		fileGULP  = open(filenameGULP,'w')
 		fileGULPS = open(filenameGULPS,'w')
 		fileGULPD = open(filenameGULPD,'w')
-	
-	fileIDX = open(filenameIDX,'w')
 
-	natoms  = len(iface.IfacePosSC)
-	# in the case there is no hydrogens added - iface.idxSubH and 
-	# iface.idxDepH are set to iface.idxSub and iface.idxDep in
-	# class Interface
-	natomsS = len(iface.idxSubH) 
-	natomsD = len(iface.idxDepH)
+	if writeVASP:
+		fileVASP      = open(filenameVASP,'w')
+		fileSVASP     = open(filenameSVASP,'w')
+		fileDVASP     = open(filenameDVASP,'w')
+		fileVASP_POT  = open(filenameVASP_POT,'w')
+		fileSVASP_POT = open(filenameSVASP_POT,'w')
+		fileDVASP_POT = open(filenameDVASP_POT,'w')
+
+
+	fileIDX = open(filenameIDX,'w')
 
 	# For isolated deposit, we want to have it shifted to the bottom 
 	# of the box
@@ -3995,9 +4049,9 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		             (iface.IfaceVecs[1][0],\
 			      iface.IfaceVecs[1][1],iface.IfaceVecs[1][2]))
 		fileAIMS.write("lattice_vector %12.6f  %12.6f  %12.6f\n"%\
-		             (iface.IfaceVecs[2][0]*nVac,\
-			      iface.IfaceVecs[2][1]*nVac,\
-			      iface.IfaceVecs[2][2]*nVac))
+		             (iface.IfaceVecs[2][0]*nVacM,\
+			      iface.IfaceVecs[2][1]*nVacM,\
+			      iface.IfaceVecs[2][2]*nVacM))
 
 		fileSAIMS.write("lattice_vector %12.6f  %12.6f  %12.6f\n"%\
 		             (iface.IfaceVecs[0][0],\
@@ -4006,9 +4060,9 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		             (iface.IfaceVecs[1][0],\
 			      iface.IfaceVecs[1][1],iface.IfaceVecs[1][2]))
 		fileSAIMS.write("lattice_vector %12.6f  %12.6f  %12.6f\n"%\
-		             (iface.IfaceVecs[2][0]*nVac,\
-			      iface.IfaceVecs[2][1]*nVac,\
-			      iface.IfaceVecs[2][2]*nVac))
+		             (iface.IfaceVecs[2][0]*nVacM,\
+			      iface.IfaceVecs[2][1]*nVacM,\
+			      iface.IfaceVecs[2][2]*nVacM))
 
 		fileDAIMS.write("lattice_vector %12.6f  %12.6f  %12.6f\n"%\
 		             (iface.IfaceVecs[0][0],\
@@ -4017,9 +4071,60 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		             (iface.IfaceVecs[1][0],\
 			      iface.IfaceVecs[1][1],iface.IfaceVecs[1][2]))
 		fileDAIMS.write("lattice_vector %12.6f  %12.6f  %12.6f\n"%\
-		             (iface.IfaceVecs[2][0]*nVac,\
-			      iface.IfaceVecs[2][1]*nVac,\
-			      iface.IfaceVecs[2][2]*nVac))
+		             (iface.IfaceVecs[2][0]*nVacM,\
+			      iface.IfaceVecs[2][1]*nVacM,\
+			      iface.IfaceVecs[2][2]*nVacM))
+
+	# If outputting VASP, write the lattice vectors
+	if writeVASP:
+		print "Generating VASP POSCAR file"
+		fileVASP.write("%s\n"%confName)
+		fileVASP.write("1.00\n")
+		fileVASP.write("%12.6f  %12.6f  %12.6f\n"%\
+		             (iface.IfaceVecs[0][0],\
+			     iface.IfaceVecs[0][1],iface.IfaceVecs[0][2]))
+		fileVASP.write("%12.6f  %12.6f  %12.6f\n"%\
+		             (iface.IfaceVecs[1][0],\
+			      iface.IfaceVecs[1][1],iface.IfaceVecs[1][2]))
+		fileVASP.write("%12.6f  %12.6f  %12.6f\n"%\
+		             (iface.IfaceVecs[2][0]*nVacM,\
+			      iface.IfaceVecs[2][1]*nVacM,\
+			      iface.IfaceVecs[2][2]*nVacM))
+		fileVASP.write("Selective dynamics\n")
+		fileVASP.write("Cartesian\n")
+
+
+		fileSVASP.write("%s\n"%confNameS)
+		fileSVASP.write("1.00\n")
+		fileSVASP.write("%12.6f  %12.6f  %12.6f\n"%\
+		             (iface.IfaceVecs[0][0],\
+			     iface.IfaceVecs[0][1],iface.IfaceVecs[0][2]))
+		fileSVASP.write("%12.6f  %12.6f  %12.6f\n"%\
+		             (iface.IfaceVecs[1][0],\
+			      iface.IfaceVecs[1][1],iface.IfaceVecs[1][2]))
+		fileSVASP.write("%12.6f  %12.6f  %12.6f\n"%\
+		             (iface.IfaceVecs[2][0]*nVacM,\
+			      iface.IfaceVecs[2][1]*nVacM,\
+			      iface.IfaceVecs[2][2]*nVacM))
+		fileSVASP.write("Selective dynamics\n")
+		fileSVASP.write("Cartesian\n")
+
+
+		fileDVASP.write("%s\n"%confNameD)
+		fileDVASP.write("1.00\n")
+		fileDVASP.write("%12.6f  %12.6f  %12.6f\n"%\
+		             (iface.IfaceVecs[0][0],\
+			     iface.IfaceVecs[0][1],iface.IfaceVecs[0][2]))
+		fileDVASP.write("%12.6f  %12.6f  %12.6f\n"%\
+		             (iface.IfaceVecs[1][0],\
+			      iface.IfaceVecs[1][1],iface.IfaceVecs[1][2]))
+		fileDVASP.write("%12.6f  %12.6f  %12.6f\n"%\
+		             (iface.IfaceVecs[2][0]*nVacM,\
+			      iface.IfaceVecs[2][1]*nVacM,\
+			      iface.IfaceVecs[2][2]*nVacM))
+		fileDVASP.write("Selective dynamics\n")
+		fileDVASP.write("Cartesian\n")
+
 	
 	# Outputting GULP
 	if writeGULP:
@@ -4035,9 +4140,9 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
                              (iface.IfaceVecs[1][0],\
                               iface.IfaceVecs[1][1],iface.IfaceVecs[1][2]))
 		fileGULP.write("%12.6f  %12.6f  %12.6f\n"%\
-		             (iface.IfaceVecs[2][0]*nVac,\
-			      iface.IfaceVecs[2][1]*nVac,\
-			      iface.IfaceVecs[2][2]*nVac))
+		             (iface.IfaceVecs[2][0]*nVacM,\
+			      iface.IfaceVecs[2][1]*nVacM,\
+			      iface.IfaceVecs[2][2]*nVacM))
 		fileGULP.write("0 0 0 0 0 0\n")
 		fileGULP.write("cartesian\n")
 
@@ -4052,9 +4157,9 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
                              (iface.IfaceVecs[1][0],\
                               iface.IfaceVecs[1][1],iface.IfaceVecs[1][2]))
 		fileGULPS.write("%12.6f  %12.6f  %12.6f\n"%\
-		             (iface.IfaceVecs[2][0]*nVac,\
-			      iface.IfaceVecs[2][1]*nVac,\
-			      iface.IfaceVecs[2][2]*nVac))
+		             (iface.IfaceVecs[2][0]*nVacM,\
+			      iface.IfaceVecs[2][1]*nVacM,\
+			      iface.IfaceVecs[2][2]*nVacM))
 		fileGULPS.write("0 0 0 0 0 0\n")
 		fileGULPS.write("cartesian\n")
 
@@ -4069,9 +4174,9 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
                              (iface.IfaceVecs[1][0],\
                               iface.IfaceVecs[1][1],iface.IfaceVecs[1][2]))
 		fileGULPD.write("%12.6f  %12.6f  %12.6f\n"%\
-		             (iface.IfaceVecs[2][0]*nVac,\
-			      iface.IfaceVecs[2][1]*nVac,\
-			      iface.IfaceVecs[2][2]*nVac))
+		             (iface.IfaceVecs[2][0]*nVacM,\
+			      iface.IfaceVecs[2][1]*nVacM,\
+			      iface.IfaceVecs[2][2]*nVacM))
 		fileGULPD.write("0 0 0 0 0 0\n")
 		fileGULPD.write("cartesian\n")
 	#Find top and bottom layer
@@ -4168,6 +4273,7 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 #				fileAIMS.write\
 #				("constrain_relaxation y\n")
 
+
 		if writeGULP:
 			if (cstrlxH) and atom == "H":
 				fileGULP.write(("%4s    core   %12.6f   %12.6f"
@@ -4209,6 +4315,7 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 					    ("constrain_relaxation x\n")
 					fileSAIMS.write\
 					    ("constrain_relaxation y\n")
+
 			if writeGULP:
 				if (cstrlxH) and atom == "H":
 					fileGULPS.write\
@@ -4292,8 +4399,141 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		fileGULPD.write("H core H\n")
 		fileGULPD.write("library reaxff_general.lib\n")
 
-	#Write Interface, Deposit, Substarte atoms numbers, and area
+	# Write coordinates in VASP POSCAR format
+	if writeVASP:
+		# We need to transalte fronzedidx to list where 1 is frozen, 0 non frozen for each atom
+		# Create list with frozen indices where 1 is frozen, 0 not frozen.
+		# Create list with Substrate indices where 1 belongs to Dubstrate, 0 not
+		# Create list with Deposit indices where 1 belongs to Deposit, 0 not
+		# Do it for each atom 
+		frozenidxVASP=[]
+		idxSubHVASP = []
+		idxDepHVASP = []
+		for i in range(len(iface.IfacePosSC)):
+			if i in frozenidx:
+				frozenidxVASP.append(1)
+			else:
+				frozenidxVASP.append(0)
+			if i in iface.idxSubH:
+				idxSubHVASP.append(1)
+			else:
+				idxSubHVASP.append(0)
 
+			if i in iface.idxDepH:
+				idxDepHVASP.append(1)
+			else:
+				idxDepHVASP.append(0)
+
+		frozenidxVASP = np.array(frozenidxVASP)
+		idxSubHVASP= np.array(idxSubHVASP)
+		idxDepHVASP= np.array(idxDepHVASP)
+
+		# In VASP atoms are sorted by specied. Sort atom list now.
+		order = np.argsort(iface.IfaceAtmSC)
+		IfaceAtmSCVASP = iface.IfaceAtmSC[order]
+		IfacePosSCVASP = iface.IfacePosSC[order]
+		frozenidxVASP = frozenidxVASP[order]
+		idxSubHVASP = idxSubHVASP[order]
+		idxDepHVASP = idxDepHVASP[order]
+
+		atomTypes  = np.zeros((len(iface.atomTyp)),dtype=np.int)	
+		atomTypesS = np.zeros((len(iface.atomTyp)),dtype=np.int)
+		atomTypesD = np.zeros((len(iface.atomTyp)),dtype=np.int)
+
+		# Count number of atoms types in Interface
+		# Create a list [n1, n2, n3,...,nm] where m is number of atoms of give type
+		for i in range(len(IfaceAtmSCVASP)):
+			atom = IfaceAtmSCVASP[i]
+			atomTypes[atom] += 1
+
+			# Count atom types in Substrate
+			if idxSubHVASP[i]:
+				atomTypesS[atom] += 1
+
+			# Count atom types in Deposit 
+			if idxDepHVASP[i]:
+				atomTypesD[atom] += 1
+
+		# We will not do POTCAR file. Instead we will create 
+		# file that will identify which species is what atom 
+		# in the order they are written in POSCAR file 
+		atomTypesString  = ""
+		atomTypesStringS = ""
+		atomTypesStringD = ""
+		atomTypesLables  = []
+		atomTypesLablesS = []
+		atomTypesLablesD = []
+		counter = 1
+		for i in range(len(atomTypes)):
+			typ = atomTypes[i]
+			if typ != 0:
+				atomTypesString = atomTypesString + str(typ) + " "
+				fileVASP_POT.write("Species %3i: %3s\n"%(counter,iface.atomTyp[i]))
+				counter += 1
+		# For Substrate
+		counter = 1
+		for i in range(len(atomTypesS)):
+			typ = atomTypesS[i]
+			if typ != 0:
+				atomTypesStringS = atomTypesStringS + str(typ) + " "
+				fileSVASP_POT.write("Species %3i: %3s\n"%(counter,iface.atomTyp[i]))
+				counter += 1
+		# For Deposit
+		counter = 1
+		for i in range(len(atomTypesD)):
+			typ = atomTypesD[i]
+			if typ != 0:
+				atomTypesStringD = atomTypesStringD + str(typ) + " "
+				fileDVASP_POT.write("Species %3i: %3s\n"%(counter,iface.atomTyp[i]))
+				counter += 1
+
+		fileVASP.write("%s\n"%atomTypesString)
+		fileSVASP.write("%s\n"%atomTypesStringS)
+		fileDVASP.write("%s\n"%atomTypesStringD)
+		
+		# Write positions to POSCAR
+		for i in range(len(IfacePosSCVASP)):
+			atom = iface.atomTyp[IfaceAtmSCVASP[i]]
+			x = IfacePosSCVASP[i][0]
+			y = IfacePosSCVASP[i][1]
+			z = IfacePosSCVASP[i][2]
+	
+			# Write interface
+			cOpt = "F F F"
+			if (cstrlxH) and atom == "H":
+				cOpt = "T T F"
+
+			if frozenidxVASP[i]:
+				cOpt = "T T F"
+
+			fileVASP.write("%12.6f   %12.6f   %12.6f %s\n"%\
+				      (x,y,z,cOpt))
+
+			# Write substrate
+			if idxSubHVASP[i]:
+				cOpt = "F F F"
+				if (cstrlxH) and atom == "H":
+					cOpt = "T T F"
+				if (cstrlxS) and (round(z,6) <= bot):
+					cOpt = "T T F"
+				fileSVASP.write\
+				     ("%12.6f   %12.6f   %12.6f %s\n"%\
+			             (x,y,z,cOpt))
+
+			# Write deposit
+			if idxDepHVASP[i]:
+				cOpt = "F F F"
+				if (cstrlxH) and atom == "H":
+					cOpt = "T T F"
+				if (cstrlxD) and (round(z,6) >= top):
+					cOpt = "T T F"
+				fileDVASP.write\
+				     ("%12.6f   %12.6f   %12.6f %s\n"%\
+			             (x,y,z,cOpt))
+	# End of VASP writing
+
+
+	# Write Interface, Deposit, Substarte atoms numbers, and area to the IDX file
 	fileIDX.write("%i:%i:%i\n"%(len(iface.IfacePosSC), len(iface.idxDepH),\
 			            len(iface.idxSubH)))
 	text="Outside idx:   "+"".join("%5i"% t for t in frozenidx)+"\n"
@@ -4304,9 +4544,14 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 	file.close()	
 	fileS.close()	
 	fileD.close()	
-	fileAIMS.close()
-	fileSAIMS.close()
-	fileDAIMS.close()
+	if writeAIMS:
+		fileAIMS.close()
+		fileSAIMS.close()
+		fileDAIMS.close()
+	if writeVASP:
+		fileVASP.close()
+		fileSVASP.close()
+		fileDVASP.close()
 	if writeGULP:
 		fileGULP.close()
 		fileGULPS.close()
@@ -4754,6 +4999,7 @@ for subMillerString in subMillerList:
 							writeGEN=False,\
 							writeAIMS=True,\
 							writeGULP=False,\
+							writeVASP=True,\
 							cstrlxD=3,cstrlxS=2,\
 							cstrlxH=False,\
 							bondmod=False)
