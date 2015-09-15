@@ -17,4 +17,4 @@ depAtRad      1.17         # Deposit atomic radius
 skipStep1     True         # Skip automatic generation of slabs distance True/False
 poissonRatio  True         # Scale z-axis in the Deposit according to Poisson ratio
 sandwich      False        # make a sandwich configuration S-D-S
-nVac          4            # Amount of vacuum layers above the slab; given as multipliers of slab thickness
+nVac          150          # Thickness of vacuum in A
