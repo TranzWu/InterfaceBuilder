@@ -4090,8 +4090,6 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		             (iface.IfaceVecs[2][0]*nVacM,\
 			      iface.IfaceVecs[2][1]*nVacM,\
 			      iface.IfaceVecs[2][2]*nVacM))
-		fileVASP.write("Selective dynamics\n")
-		fileVASP.write("Cartesian\n")
 
 
 		fileSVASP.write("%s\n"%confNameS)
@@ -4106,8 +4104,6 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		             (iface.IfaceVecs[2][0]*nVacM,\
 			      iface.IfaceVecs[2][1]*nVacM,\
 			      iface.IfaceVecs[2][2]*nVacM))
-		fileSVASP.write("Selective dynamics\n")
-		fileSVASP.write("Cartesian\n")
 
 
 		fileDVASP.write("%s\n"%confNameD)
@@ -4122,8 +4118,6 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		             (iface.IfaceVecs[2][0]*nVacM,\
 			      iface.IfaceVecs[2][1]*nVacM,\
 			      iface.IfaceVecs[2][2]*nVacM))
-		fileDVASP.write("Selective dynamics\n")
-		fileDVASP.write("Cartesian\n")
 
 	
 	# Outputting GULP
@@ -4490,7 +4484,14 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		fileVASP.write("%s\n"%atomTypesString)
 		fileSVASP.write("%s\n"%atomTypesStringS)
 		fileDVASP.write("%s\n"%atomTypesStringD)
-		
+
+		fileVASP.write("Selective dynamics\n")
+		fileVASP.write("Cartesian\n")
+		fileSVASP.write("Selective dynamics\n")
+		fileSVASP.write("Cartesian\n")
+		fileDVASP.write("Selective dynamics\n")
+		fileDVASP.write("Cartesian\n")
+
 		# Write positions to POSCAR
 		for i in range(len(IfacePosSCVASP)):
 			atom = iface.atomTyp[IfaceAtmSCVASP[i]]
