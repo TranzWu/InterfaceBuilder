@@ -2239,6 +2239,8 @@ class Interface:
 		# Dictionary with vectors for all the atom types
 		self.Depavecsall = Deposit.avecsall.copy()
 		self.Subavecsall = Substrate.avecsall.copy()
+		# array to keep indices of capping atoms
+		self.IfaceCapIdx = np.array([])
 		# wbond - parameter for scoring function
 
 
@@ -2295,6 +2297,10 @@ class Interface:
 		# Substrate and Hydrogens
 		# idxSub and idxDep contain indices of only Deposit and only
 		# Substrate
+		
+		# No capping atom so far, set all indices to False
+		self.IfaceCapIdx = np.zeros((len(self.IfacePosSC)),dtype=np.bool)
+
 		if genHD or genHS:
 			self.IfacePosSC,self.IfaceAtmSC,self.idxDep,\
 					self.idxSub,self.idxDepH,self.idxSubH\
