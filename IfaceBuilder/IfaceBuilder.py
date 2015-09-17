@@ -2308,7 +2308,8 @@ class Interface:
 
 		if capAtD or capAtS:
 			if sandwich: capAtD = False
-			self.IfaceAtmSC = self.__addCapAtoms(self.IfacePosSC,\
+			self.IfaceAtmSC, self.IfaceCapIdx \
+					= self.__addCapAtoms(self.IfacePosSC,\
 					self.IfaceAtmSC, capAtD, capAtS) 
 
 		botSub = min(self.IfacePosSC[:,2])
@@ -3331,6 +3332,8 @@ class Interface:
 		idxtop = pos[:,2] >= top - 6*thresh
 		idxbot = pos[:,2] <= bottom + thresh
 
+		idxCap = idxtop + idxbot
+
 		# Substitute labels in Deposit
 		if capAtD:
 			# Check if capAtD in atomTyp
@@ -3364,7 +3367,7 @@ class Interface:
 				if atom:
 					labels[i] = atIdx
 
-		return labels
+		return labels, idxCap
 
 	def SCORE4(self,pos,idx1,idx2,avecs1,avecs2,latticevecs):
 		# NUMBER OF BONDS PER UNIT ARES
@@ -3950,6 +3953,20 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 			filenameDVASP_POT = "%s/%s%s-%s%s-%2.1f-D.POTCAR"\
 				%(dirname,Dname,Dface,Sname,Sface,confno)
 
+			# Files to write VASP input without capping atoms
+			filenameVASPNoH = "%s/POSCAR.%s%s-%s%s-%2.1f.POSCAR"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+			filenameSVASPNoH = "%s/POSCAR.%s%s-%s%s-%2.1f-S.POSCAR"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+			filenameDVASPNoH = "%s/POSCAR.%s%s-%s%s-%2.1f-D.POSCAR"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+
+			filenameVASP_POT_NoH = "%s/POTCAR.%s%s-%s%s-%2.1f"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+			filenameSVASP_POT_NoH = "%s/POTCAR.%s%s-%s%s-%2.1f-S"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+			filenameDVASP_POT_NoH = "%s/POTCAR.%s%s-%s%s-%2.1f-D"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
 
 
 		# Index file with number of atoms in 
@@ -3983,17 +4000,31 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 			filenameGULPD = "%s/%s%s-%s%s-%i-D.gin"\
 				%(dirname,Dname,Dface,Sname,Sface,confno)
 		if writeVASP:
-			filenameVASP  = "%s/%s%s-%s%s-%i.POSCAR"\
+			filenameVASP  = "%s/POSCAR.%s%s-%s%s-%i"\
 				%(dirname,Dname,Dface,Sname,Sface,confno)
-			filenameSVASP = "%s/%s%s-%s%s-%i-S.POSCAR"\
+			filenameSVASP = "%s/POSCAR.%s%s-%s%s-%i-S"\
 				%(dirname,Dname,Dface,Sname,Sface,confno)
-			filenameDVASP = "%s/%s%s-%s%s-%i-D.POSCAR"\
+			filenameDVASP = "%s/POSCAR.%s%s-%s%s-%i-D"\
 				%(dirname,Dname,Dface,Sname,Sface,confno)
-			filenameVASP_POT  = "%s/%s%s-%s%s-%i.POTCAR"\
+			filenameVASP_POT  = "%s/POTCAR.%s%s-%s%s-%i"\
 				%(dirname,Dname,Dface,Sname,Sface,confno)
-			filenameSVASP_POT = "%s/%s%s-%s%s-%i-S.POTCAR"\
+			filenameSVASP_POT = "%s/POTCAR.%s%s-%s%s-%i-S"\
 				%(dirname,Dname,Dface,Sname,Sface,confno)
-			filenameDVASP_POT = "%s/%s%s-%s%s-%i-D.POTCAR"\
+			filenameDVASP_POT = "%s/POTCAR.%s%s-%s%s-%i-D"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+
+			# Files to write VASP input without capping atoms
+			filenameVASPNoH  = "%s/POSCAR.%s%s-%s%s-%i-NoH"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+			filenameSVASPNoH = "%s/POSCAR.%s%s-%s%s-%i-S-NoH"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+			filenameDVASPNoH = "%s/POSCAR.%s%s-%s%s-%i-D-NoH"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+			filenameVASP_POT_NoH  = "%s/POTCAR.%s%s-%s%s-%i-NoH"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+			filenameSVASP_POT_NoH = "%s/POTCAR.%s%s-%s%s-%i-S-NoH"\
+				%(dirname,Dname,Dface,Sname,Sface,confno)
+			filenameDVASP_POT_NoH = "%s/POTCAR.%s%s-%s%s-%i-D-NoH"\
 				%(dirname,Dname,Dface,Sname,Sface,confno)
 
 
@@ -4023,6 +4054,12 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		fileSVASP_POT = open(filenameSVASP_POT,'w')
 		fileDVASP_POT = open(filenameDVASP_POT,'w')
 
+		fileVASPNoH       = open(filenameVASPNoH,'w')
+		fileSVASPNoH      = open(filenameSVASPNoH,'w')
+		fileDVASPNoH      = open(filenameDVASPNoH,'w')
+		fileVASP_POT_NoH  = open(filenameVASP_POT_NoH,'w')
+		fileSVASP_POT_NoH = open(filenameSVASP_POT_NoH,'w')
+		fileDVASP_POT_NoH = open(filenameDVASP_POT_NoH,'w')
 
 	fileIDX = open(filenameIDX,'w')
 
@@ -4119,6 +4156,46 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 			      iface.IfaceVecs[2][1]*nVacM,\
 			      iface.IfaceVecs[2][2]*nVacM))
 
+		fileVASPNoH.write("%s\n"%confName)
+		fileVASPNoH.write("1.00\n")
+		fileVASPNoH.write("%12.6f  %12.6f  %12.6f\n"%\
+		             (iface.IfaceVecs[0][0],\
+			     iface.IfaceVecs[0][1],iface.IfaceVecs[0][2]))
+		fileVASPNoH.write("%12.6f  %12.6f  %12.6f\n"%\
+		             (iface.IfaceVecs[1][0],\
+			      iface.IfaceVecs[1][1],iface.IfaceVecs[1][2]))
+		fileVASPNoH.write("%12.6f  %12.6f  %12.6f\n"%\
+		             (iface.IfaceVecs[2][0]*nVacM,\
+			      iface.IfaceVecs[2][1]*nVacM,\
+			      iface.IfaceVecs[2][2]*nVacM))
+
+
+		fileSVASPNoH.write("%s\n"%confNameS)
+		fileSVASPNoH.write("1.00\n")
+		fileSVASPNoH.write("%12.6f  %12.6f  %12.6f\n"%\
+		             (iface.IfaceVecs[0][0],\
+			     iface.IfaceVecs[0][1],iface.IfaceVecs[0][2]))
+		fileSVASPNoH.write("%12.6f  %12.6f  %12.6f\n"%\
+		             (iface.IfaceVecs[1][0],\
+			      iface.IfaceVecs[1][1],iface.IfaceVecs[1][2]))
+		fileSVASPNoH.write("%12.6f  %12.6f  %12.6f\n"%\
+		             (iface.IfaceVecs[2][0]*nVacM,\
+			      iface.IfaceVecs[2][1]*nVacM,\
+			      iface.IfaceVecs[2][2]*nVacM))
+
+
+		fileDVASPNoH.write("%s\n"%confNameD)
+		fileDVASPNoH.write("1.00\n")
+		fileDVASPNoH.write("%12.6f  %12.6f  %12.6f\n"%\
+		             (iface.IfaceVecs[0][0],\
+			     iface.IfaceVecs[0][1],iface.IfaceVecs[0][2]))
+		fileDVASPNoH.write("%12.6f  %12.6f  %12.6f\n"%\
+		             (iface.IfaceVecs[1][0],\
+			      iface.IfaceVecs[1][1],iface.IfaceVecs[1][2]))
+		fileDVASPNoH.write("%12.6f  %12.6f  %12.6f\n"%\
+		             (iface.IfaceVecs[2][0]*nVacM,\
+			      iface.IfaceVecs[2][1]*nVacM,\
+			      iface.IfaceVecs[2][2]*nVacM))
 	
 	# Outputting GULP
 	if writeGULP:
@@ -4255,18 +4332,6 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				fileAIMS.write\
 				("constrain_relaxation y\n")
 
-#			# Constrain middle layers
-#			if ((round(z,6) >= mBottomS ) and (round(z,6) <= mTopS) ):
-#				fileAIMS.write\
-#				("constrain_relaxation x\n")
-#				fileAIMS.write\
-#				("constrain_relaxation y\n")
-#			if ((round(z,6) >= mBottomD ) and (round(z,6) <= mTopD) ):
-#				fileAIMS.write\
-#				("constrain_relaxation x\n")
-#				fileAIMS.write\
-#				("constrain_relaxation y\n")
-
 
 		if writeGULP:
 			if (cstrlxH) and atom == "H":
@@ -4400,14 +4465,15 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		# Create list with Substrate indices where 1 belongs to Dubstrate, 0 not
 		# Create list with Deposit indices where 1 belongs to Deposit, 0 not
 		# Do it for each atom 
-		frozenidxVASP=[]
-		idxSubHVASP = []
-		idxDepHVASP = []
+		frozenidxVASP = []
+		idxSubHVASP   = []
+		idxDepHVASP   = []
 		for i in range(len(iface.IfacePosSC)):
 			if i in frozenidx:
 				frozenidxVASP.append(1)
 			else:
 				frozenidxVASP.append(0)
+
 			if i in iface.idxSubH:
 				idxSubHVASP.append(1)
 			else:
@@ -4418,17 +4484,20 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 			else:
 				idxDepHVASP.append(0)
 
-		frozenidxVASP = np.array(frozenidxVASP)
-		idxSubHVASP= np.array(idxSubHVASP)
-		idxDepHVASP= np.array(idxDepHVASP)
+		frozenidxVASP    = np.array(frozenidxVASP)
 
-		# In VASP atoms are sorted by specied. Sort atom list now.
+		idxSubHVASP      = np.array(idxSubHVASP)
+		idxDepHVASP      = np.array(idxDepHVASP)
+
+		# In VASP atoms are sorted by species. Sort atom list now.
 		order = np.argsort(iface.IfaceAtmSC)
 		IfaceAtmSCVASP = iface.IfaceAtmSC[order]
 		IfacePosSCVASP = iface.IfacePosSC[order]
 		frozenidxVASP = frozenidxVASP[order]
 		idxSubHVASP = idxSubHVASP[order]
 		idxDepHVASP = idxDepHVASP[order]
+
+		capIdxVASP = iface.IfaceCapIdx[order]
 
 		atomTypes  = np.zeros((len(iface.atomTyp)),dtype=np.int)	
 		atomTypesS = np.zeros((len(iface.atomTyp)),dtype=np.int)
@@ -4531,6 +4600,122 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				fileDVASP.write\
 				     ("%12.6f   %12.6f   %12.6f %s\n"%\
 			             (x,y,z,cOpt))
+		#No write VASP files, but without capping atoms
+		
+		# Re-order the IfaceCapIdx (indices of capping atoms) according to the species order
+		capIdxVASP = iface.IfaceCapIdx[order]
+
+		# Remove the capping atom from the atom list. We are using -index as capIdxVASP is 
+		# True for capping atom, False for everytinh else. We want True for any atom, False for capping atom
+		IfaceAtmSCVASP = IfaceAtmSCVASP[-capIdxVASP]
+		IfacePosSCVASP = IfacePosSCVASP[-capIdxVASP]
+
+		frozenidxVASP = frozenidxVASP[-capIdxVASP]
+		idxSubHVASP  = idxSubHVASP[-capIdxVASP]
+		idxDepHVASP  = idxDepHVASP[-capIdxVASP]
+
+		atomTypes  = np.zeros((len(iface.atomTyp)),dtype=np.int)	
+		atomTypesS = np.zeros((len(iface.atomTyp)),dtype=np.int)
+		atomTypesD = np.zeros((len(iface.atomTyp)),dtype=np.int)
+
+		# Count number of atoms types in Interface
+		# Create a list [n1, n2, n3,...,nm] where m is number of atoms of give type
+		for i in range(len(IfaceAtmSCVASP)):
+			atom = IfaceAtmSCVASP[i]
+			atomTypes[atom] += 1
+
+			# Count atom types in Substrate
+			if idxSubHVASP[i]:
+				atomTypesS[atom] += 1
+
+			# Count atom types in Deposit 
+			if idxDepHVASP[i]:
+				atomTypesD[atom] += 1
+
+		# We will not do POTCAR file. Instead we will create 
+		# file that will identify which species is what atom 
+		# in the order they are written in POSCAR file 
+		atomTypesString  = ""
+		atomTypesStringS = ""
+		atomTypesStringD = ""
+		atomTypesLables  = []
+		atomTypesLablesS = []
+		atomTypesLablesD = []
+		counter = 1
+		for i in range(len(atomTypes)):
+			typ = atomTypes[i]
+			if typ != 0:
+				atomTypesString = atomTypesString + str(typ) + " "
+				fileVASP_POT_NoH.write("Species %3i: %3s\n"%(counter,iface.atomTyp[i]))
+				counter += 1
+		# For Substrate
+		counter = 1
+		for i in range(len(atomTypesS)):
+			typ = atomTypesS[i]
+			if typ != 0:
+				atomTypesStringS = atomTypesStringS + str(typ) + " "
+				fileSVASP_POT_NoH.write("Species %3i: %3s\n"%(counter,iface.atomTyp[i]))
+				counter += 1
+		# For Deposit
+		counter = 1
+		for i in range(len(atomTypesD)):
+			typ = atomTypesD[i]
+			if typ != 0:
+				atomTypesStringD = atomTypesStringD + str(typ) + " "
+				fileDVASP_POT_NoH.write("Species %3i: %3s\n"%(counter,iface.atomTyp[i]))
+				counter += 1
+
+		fileVASPNoH.write("%s\n"%atomTypesString)
+		fileSVASPNoH.write("%s\n"%atomTypesStringS)
+		fileDVASPNoH.write("%s\n"%atomTypesStringD)
+
+		fileVASPNoH.write("Selective dynamics\n")
+		fileVASPNoH.write("Cartesian\n")
+		fileSVASPNoH.write("Selective dynamics\n")
+		fileSVASPNoH.write("Cartesian\n")
+		fileDVASPNoH.write("Selective dynamics\n")
+		fileDVASPNoH.write("Cartesian\n")
+
+		# Write positions to POSCAR
+		for i in range(len(IfacePosSCVASP)):
+			atom = iface.atomTyp[IfaceAtmSCVASP[i]]
+			x = IfacePosSCVASP[i][0]
+			y = IfacePosSCVASP[i][1]
+			z = IfacePosSCVASP[i][2]
+			
+	
+			# Write interface
+			cOpt = "F F F"
+			if (cstrlxH) and atom == "H":
+				cOpt = "T T F"
+
+			if frozenidxVASP[i]:
+				cOpt = "T T F"
+
+			fileVASPNoH.write("%12.6f   %12.6f   %12.6f %s\n"%\
+				      (x,y,z,cOpt))
+
+			# Write substrate
+			if idxSubHVASP[i]:
+				cOpt = "F F F"
+				if (cstrlxH) and atom == "H":
+					cOpt = "T T F"
+				if (cstrlxS) and (round(z,6) <= bot):
+					cOpt = "T T F"
+				fileSVASPNoH.write\
+				     ("%12.6f   %12.6f   %12.6f %s\n"%\
+			             (x,y,z,cOpt))
+
+			# Write deposit
+			if idxDepHVASP[i]:
+				cOpt = "F F F"
+				if (cstrlxH) and atom == "H":
+					cOpt = "T T F"
+				if (cstrlxD) and (round(z,6) >= top):
+					cOpt = "T T F"
+				fileDVASPNoH.write\
+				     ("%12.6f   %12.6f   %12.6f %s\n"%\
+			             (x,y,z,cOpt))
 	# End of VASP writing
 
 
@@ -4553,6 +4738,17 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		fileVASP.close()
 		fileSVASP.close()
 		fileDVASP.close()
+		fileVASP_POT.close()
+		fileSVASP_POT.close()
+		fileDVASP_POT.close()
+
+		fileVASPNoH.close()
+		fileSVASPNoH.close()
+		fileDVASPNoH.close()
+		fileVASP_POT_NoH.close()
+		fileSVASP_POT_NoH.close()
+		fileDVASP_POT_NoH.close()
+
 	if writeGULP:
 		fileGULP.close()
 		fileGULPS.close()
