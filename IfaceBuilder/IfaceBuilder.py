@@ -129,23 +129,26 @@ def readInput(inputFile):
 	# Read nVac
 	line = file.readline()
 	line = line.split()
-	nVac= float(line[1])
+	nVac = float(line[1])
 #	if nVac <= 1: nVac = 1
 
+	#Read number of iteration of checkEdges subroutine
+	line = file.readline()
+	line = line.split()
+	nEdgeIter = int(line[1])
 
 
 	return subCIF, subMillerString,\
 	       depCIF, depMillerString,\
 	       maxArea, areaThres, vecThres, angleThres,\
 	       capAtmS, capAtmD, fparam, nLS, nLD, nConf, subAtRad, depAtRad,\
-	       skipStep1, poissonRatio, sandwich, nVac
+	       skipStep1, poissonRatio, sandwich, nVac, nEdgeIter
 
 def getMillerFromString(millerString):
 
 	out = np.array((0,0,0))
 	for item in range(len(millerString)):
 		out[item] = millerString[item]
-	
 	return out
 
 def createMillerList(maxMillerInd):
@@ -2338,16 +2341,8 @@ class Interface:
 			self.IfaceAtmSC = np.concatenate((self.IfaceAtmSC, newSubLabels))
 			self.IfaceVecs[2][-1] += topSub - botSub + self.SDdist
 
-		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
-		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
-		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
-#		# 3 was orginal
-		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
-		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
-		# Some more
-		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
-		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
-		self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
+		for i in range(nEdgeIter):
+			self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
 
 		### BEGIN FOR SCORING FUNC
 		#print "STARTING GENERATING STRUCTURES FOR SCORING FUNCTION"
@@ -4819,7 +4814,7 @@ subCIF, subMiller, \
 depCIF, depMiller, \
 maxArea, areaThres, vecThres, angleThres,\
 capAtmS, capAtmD, fparam, nLS, nLD, nConf, subAtRad, depAtRad,\
-skipStep1, poissonRatio, sandwich, nVac = readInput(inputFile)
+skipStep1, poissonRatio, sandwich, nVac, nEdgeIter = readInput(inputFile)
 print 
 print "Substrate CIF..."
 i,transM,atoms,positions,atomTyp = ReadCIF(subCIF,atomTyp)
