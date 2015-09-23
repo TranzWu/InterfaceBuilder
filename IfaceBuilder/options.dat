@@ -18,4 +18,4 @@ skipStep1     False        # Skip automatic generation of slabs distance True/Fa
 poissonRatio  True         # Scale z-axis in the Deposit according to Poisson ratio
 sandwich      False        # make a sandwich configuration S-D-S
 nVac          75           # Thickness of vacuum in A
-nEdgeIter     1           # number of iterations for algorithm transforming interface cell from rectangular to rhombohedral 
+nEdgeIter     15           # number of iterations for algorithm transforming interface cell from rectangular to rhombohedral 
