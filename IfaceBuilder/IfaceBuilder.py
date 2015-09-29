@@ -2283,7 +2283,6 @@ class Interface:
 		DSurfPosScale = self.__scale(DSurfPos,\
  				             vecDepR[0],vecDepR[1],\
 					     vecSubR[0],vecSubR[1],poissonRatio)
-		DSurfPosScale = DSurfPos
 		self.IfacePosSC,self.IfaceAtmSC,self.idxDep,self.idxSub,alignvec \
 					     = self.__alignsurfaces\
 				              (DepavecsR,SubavecsR,\
