@@ -2281,8 +2281,9 @@ class Interface:
 
 		# Scale deposit so it matches substrate exactely
 		DSurfPosScale = self.__scale(DSurfPos,\
-   				             vecDepR[0],vecDepR[1],\
+ 				             vecDepR[0],vecDepR[1],\
 					     vecSubR[0],vecSubR[1],poissonRatio)
+		DSurfPosScale = DSurfPos
 		self.IfacePosSC,self.IfaceAtmSC,self.idxDep,self.idxSub,alignvec \
 					     = self.__alignsurfaces\
 				              (DepavecsR,SubavecsR,\
@@ -2341,8 +2342,9 @@ class Interface:
 			self.IfaceAtmSC = np.concatenate((self.IfaceAtmSC, newSubLabels))
 			self.IfaceVecs[2][-1] += topSub - botSub + self.SDdist
 
-		for i in range(nEdgeIter):
-			self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
+#		for i in range(nEdgeIter):
+#			self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
+		self.__checkEdge()
 
 		### BEGIN FOR SCORING FUNC
 		#print "STARTING GENERATING STRUCTURES FOR SCORING FUNCTION"
@@ -3190,6 +3192,8 @@ class Interface:
 		spacing = botDep - topSub
 
 		vector[-1] += spacing
+		vector[0] = 0.0
+		vector[1] = 0.0
 
 		return posout, labels, idxDep, idxSub, np.array(vector)
 
@@ -3252,7 +3256,7 @@ class Interface:
 			ys = vec2S[1]/vec2Dr[1]
 			vec2scale = np.array((xs,ys,1.0))
 
-		# Scale the positons:
+		# Scale the positions:
 		posout = posout * vec1scale * vec2scale
 
 		#poissonRatio = True
@@ -3267,7 +3271,97 @@ class Interface:
 
 		return posout
 
+	def __checkEdge(self):
+		
+		# When the Deposit is translated in the plane of the interface by anticipatory vector direction 
+		# align Deposit on top of Substrate so the whole cell is tetragonal.
+		# Algorithm:
+		# Using barycentric coordinates check if the atoms on deposit are contained in the area
+		# desingated by the substrate lattice vectors X and Y.
+		# If they are not, translate them following PBC to the inside of the area designated by X-Y
+
+		vec1 = self.IfaceVecs[0][0:2] # only x,y- components of lattice vector A 
+		vec2 = self.IfaceVecs[1][0:2] # only x,y- components of lattice vector B
+		X = vec1[0]
+		Y = vec2[1]
+
+		# Calculate tangent of the angle between  vec1 and vec2
+		# This is required to calculate projection of atom on lattice vector X in 
+		# the case a cell is a parallelogram
+		nY = np.linalg.norm(vec2)
+		sinphi = Y/nY
+		phi = m.asin(sinphi)
+		tanphi = m.tan(phi)
+
+		# Lower triangle
+		# p1 = [0,0]
+		# p2 = vec1
+		# p3 = vec2
+		p1 = np.array((0.0,0.0))
+
+		for idx in self.idxDep:
+			atom = self.IfacePosSC[idx]
+			translateAtom = False
+
+			alpha1,beta1,gamma1 = self.__barycentric(atom,p1,\
+						              vec1,vec2)
+			a1 = alpha1 >=0 and alpha1 <= 1
+			b1 = beta1  >=0 and beta1  <= 1
+			c1 = gamma1 >=0 and gamma1 <= 1
+
+			# Upper triangle
+			# p1 = vec1+vec2
+			# p2 = vec1
+			# p3 = vec2
+
+			p1 = vec1 + vec2
+
+			alpha2,beta2,gamma2 = self.__barycentric(atom,p1,\
+						              vec1,vec2)
+
+			a2 = alpha2 >= 0 and alpha2 <= 1
+			b2 = beta2  >= 0 and beta2  <= 1
+			c2 = gamma2 >= 0 and gamma2 <= 1
+	
+			if not(a1 and b1 and c1) or not(a2 and b2 and c2):
+				translateAtom = True
+
+			if translateAtom:
+				# If atom of Deposit is "outside" surface move it by substracting lattice vector
+				# This is not general algorithm, but we are using a fact that:
+				# - systems are always oriented in the 1st quarter of coordinate system
+				# - lattice vector X is always in the direction [x,0,0]
+				# The translation of the atom will follow with 3 cases:
+				# 1) if its x and y- components are large than x and y components of Y and Y vector, 
+				# 2) if its x-component is larger than x component of X lattice vector, subtract X 
+				# 3) if its y-component is larger than y component of Y lattice vector, subtract Y
+				#    subtract X and Y
+
+				x = atom[0]
+				y = atom[1]
+				z = atom[2]
+
+				# Calculate the projection of the point on the X lattice vector in the case
+				# the cell is parallelogram
+				xprim = y/tanphi
+				p = x - xprim
+
+				if idx == 3:
+					print "ATOM 4:",p, y
+
+				if p > X and y >Y:
+					self.IfacePosSC[idx] = \
+					self.IfacePosSC[idx] - self.IfaceVecs[0] - self.IfaceVecs[1]
+				elif p > X:
+					self.IfacePosSC[idx] = self.IfacePosSC[idx] - self.IfaceVecs[0]
+				elif y > Y:
+					self.IfacePosSC[idx] = self.IfacePosSC[idx] - self.IfaceVecs[1]
+
 	def __checkedge(self,posinp,vecs):
+
+		########################################
+		### OLD ALGORITHM, REPLACED BY checkEdge
+		########################################
 
 		# In the case z-vector is not pointing aling 0,0,z direction,
 		# move the atoms from the side of the interface that lay
