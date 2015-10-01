@@ -3197,6 +3197,14 @@ class Interface:
 
 	def __scaleShear(self, pos, vec1D, vec2D, vec1S, vec2S, poissonRatio):
 
+		# Scale the Deposit lattice to match the Substrate lattice
+		# Scaling is done with the use of the shear matrix, which transaltes 
+		# Deposit along the x-direction, so the angle between X-0-Y is the same in
+		# Deposit in Substrate. Next, length of the Deposit X and Y vectors is scaled to match
+		# the ones from the Substrate
+		# The method always enforces perfect PBC, with the cost of slight distortion of crystal lattice of 
+		# Deposit, i.e. the angles and bond lengths are slightly different from the original bulk values. 
+
 		n1D = np.linalg.norm(vec1D)
 		n2D = np.linalg.norm(vec2D)
 
@@ -3257,10 +3265,19 @@ class Interface:
 
 		return posout
 
-	def __scale(self,pos,vec1D,vec2D,vec1S,vec2S,poissonRatio):
+	def __scaleRotation(self,pos,vec1D,vec2D,vec1S,vec2S,poissonRatio):
 		
 		# Scale the coordinates such that deposit
 		# is always matching substrate
+		# The scaling is done by application of Rotation matrix, 
+		# which set the X-0-Y (gamma) angle in the Deposit to be equal to
+		# the one in Substrate. Next the length of the vectors is scaled accordingly.
+		# This is old method, __scaleShear should be used instead. Due to rotation of the 
+		# lattice vectors, also the whole lattice orientation is rotated, which destroys the 
+		# periodicity of the Deposit and creates defects on the edges. 
+		# The advantage over __scaleShear is that is keeps the crystal lattice (bond lengths and  
+		# angles) undistorted. 
+
 
 
 		posout = pos.copy()
