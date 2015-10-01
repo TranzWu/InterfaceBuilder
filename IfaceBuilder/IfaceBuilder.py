@@ -132,17 +132,11 @@ def readInput(inputFile):
 	nVac = float(line[1])
 #	if nVac <= 1: nVac = 1
 
-	#Read number of iteration of checkEdges subroutine
-	line = file.readline()
-	line = line.split()
-	nEdgeIter = int(line[1])
-
-
 	return subCIF, subMillerString,\
 	       depCIF, depMillerString,\
 	       maxArea, areaThres, vecThres, angleThres,\
 	       capAtmS, capAtmD, fparam, nLS, nLD, nConf, subAtRad, depAtRad,\
-	       skipStep1, poissonRatio, sandwich, nVac, nEdgeIter
+	       skipStep1, poissonRatio, sandwich, nVac 
 
 def getMillerFromString(millerString):
 
@@ -2346,7 +2340,7 @@ class Interface:
 			self.IfaceAtmSC = np.concatenate((self.IfaceAtmSC, newSubLabels))
 			self.IfaceVecs[2][-1] += topSub - botSub + self.SDdist
 
-#		for i in range(nEdgeIter):
+#		for i in range(15):
 #			self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
 		self.__checkEdge()
 
@@ -3134,10 +3128,10 @@ class Interface:
 #		bfrac = covrad/lv
 		# end TEST 
 		#bfrac = 0.9
-		bfrac = bfrac/lv
-		vector = vector*bfrac
+#		bfrac = bfrac/lv # REMOVED 10/01/2015
+#		vector = vector*bfrac # REMOVED 10/01/2015
 		#vector[2]=1.8024400000000007
-		#vector[2]=bfrac
+		vector[2]=bfrac
 
 		
 		# Now, move the deposit according the resulting anticipatory 
@@ -4970,7 +4964,7 @@ subCIF, subMiller, \
 depCIF, depMiller, \
 maxArea, areaThres, vecThres, angleThres,\
 capAtmS, capAtmD, fparam, nLS, nLD, nConf, subAtRad, depAtRad,\
-skipStep1, poissonRatio, sandwich, nVac, nEdgeIter = readInput(inputFile)
+skipStep1, poissonRatio, sandwich, nVac = readInput(inputFile)
 print 
 print "Substrate CIF..."
 i,transM,atoms,positions,atomTyp = ReadCIF(subCIF,atomTyp)
@@ -5330,7 +5324,7 @@ for subMillerString in subMillerList:
 					print
 					print "Configuration no. %5i"%confno
 
-					i=bondlist[vecpairidx]
+					i = bondlist[vecpairidx]
 					iface = Interface(vecsDeposit[confno],\
 							vecsSubstrate[confno],Dep,Sub,\
 							vecpair,i,wf,atomicRadius, nLS, nLD,\
