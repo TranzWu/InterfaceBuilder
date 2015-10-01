@@ -2280,9 +2280,14 @@ class Interface:
 						 genHD,genHS)
 
 		# Scale deposit so it matches substrate exactely
-		DSurfPosScale = self.__scale(DSurfPos,\
- 				             vecDepR[0],vecDepR[1],\
+#		DSurfPosScale = self.__scale(DSurfPos,\
+# 				             vecDepR[0],vecDepR[1],\
+#					     vecSubR[0],vecSubR[1],poissonRatio)
+
+		DSurfPosScale = self.__scaleShear(DSurfPos,\
+				             vecDepR[0],vecDepR[1],\
 					     vecSubR[0],vecSubR[1],poissonRatio)
+
 		self.IfacePosSC,self.IfaceAtmSC,self.idxDep,self.idxSub,alignvec \
 					     = self.__alignsurfaces\
 				              (DepavecsR,SubavecsR,\
@@ -3196,6 +3201,67 @@ class Interface:
 
 		return posout, labels, idxDep, idxSub, np.array(vector)
 
+	def __scaleShear(self, pos, vec1D, vec2D, vec1S, vec2S, poissonRatio):
+
+		n1D = np.linalg.norm(vec1D)
+		n2D = np.linalg.norm(vec2D)
+
+		n1S = np.linalg.norm(vec1S)
+		n2S = np.linalg.norm(vec2S)
+
+		posout = pos.copy()
+
+		u = vec2D[0]
+		v = vec2D[1]
+
+		x = vec2S[0]
+		y = vec2S[1]
+
+		k = (x - u)/v
+
+		m = np.array([[1,k,0],[0,1,0],[0,0,1]])
+
+		vec2Dshear = np.dot(m,vec2D)
+		
+		#posout = np.dot(posout,m)
+		for i in range(len(posout)):
+			atom = posout[i]
+			atomNew = np.dot(m,atom)
+			posout[i] = atomNew
+
+		vec1scale = np.array((1.0,1.0,1.0))
+		vec2scale = np.array((1.0,1.0,1.0))
+
+		# Scale vector 1
+		if not (vec1D == vec1S).all():
+			xs = vec1S[0]/vec1D[0]
+			if vec1D[1] == 0.0:
+				ys = 1.0
+			else:
+				ys = vec1S[1]/vec1D[1]
+			vec1scale = np.array((xs,ys,1.0))
+
+		# Scale vector 2
+		if not (vec2Dshear == vec2S).all():
+			if vec2Dshear[0] == 0:
+				xs = 1.0
+			else:
+				xs = vec2S[0]/vec2Dshear[0]
+			ys = vec2S[1]/vec2Dshear[1]
+			vec2scale = np.array((xs,ys,1.0))
+
+
+		posout = posout * vec1scale * vec2scale
+
+		if poissonRatio:
+			m1 = n1D/n1S # misfit in x
+			m2 = n2D/n2S # misfit in y
+
+			mz = m1 * m2 
+			vec3scale = np.array((1.0, 1.0, mz))
+			posout = posout * vec3scale
+
+		return posout
 
 	def __scale(self,pos,vec1D,vec2D,vec1S,vec2S,poissonRatio):
 		
@@ -3344,9 +3410,6 @@ class Interface:
 				# the cell is parallelogram
 				xprim = y/tanphi
 				p = x - xprim
-
-				if idx == 3:
-					print "ATOM 4:",p, y
 
 				if p > X and y >Y:
 					self.IfacePosSC[idx] = \
@@ -5291,7 +5354,7 @@ for subMillerString in subMillerList:
 							writeAIMS=True,\
 							writeGULP=False,\
 							writeVASP=True,\
-							cstrlxD=3,cstrlxS=2,\
+							cstrlxD=0,cstrlxS=0,\
 							cstrlxH=False,\
 							bondmod=False)
 				scresultsS.append(resultstmpS)
