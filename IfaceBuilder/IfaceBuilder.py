@@ -4186,7 +4186,10 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		if bondmod:
 			dirnameConf = "%s%s-%s%s-%2.1f"%(Dname,Dface,Sname,Sface,confno)
 		dirname = "%s%s-%s%s/%i/%s"%(Dname,Dface,Sname,Sface,vecpairidx,dirnameConf)
-		os.system("mkdir -p %s"%dirname)
+		try:
+			os.makedirs(dirname)
+		except OSError:
+			continue
 
 		# Write which vectors we are using for alignement
 		ftmp = open("%s/vectors.txt"%dirname,'w')
@@ -5348,7 +5351,8 @@ for subMillerString in subMillerList:
 		#resmat=np.array([[0.0,1.0,1.0]])
 		#resmat=np.array([resmat[2]])
 		scoreDirName = "SCORE-%s-%s"%(subMillerString,depMillerString)
-		os.system("mkdir -p %s/DIST"%scoreDirName)
+		scoreDirNameDIST = "%s/DIST"%scoreDirName
+		os.makedirs(scoreDirNameDIST)
 
 		# if user asked for more results than there actually is, limit it.
 		if nConf > nResults: nConf = nResults

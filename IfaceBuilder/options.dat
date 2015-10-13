@@ -1,6 +1,6 @@
-substrate     Si.cif       # CIF file for Substrate
-substrateIDX  100          # Miller indices for Substrate
-deposit       Hf.cif       # CIF file for Deposit
+substrate     Si-opt.cif       # CIF file for Substrate
+substrateIDX  110          # Miller indices for Substrate
+deposit       SiO2.cif       # CIF file for Deposit
 depositIDX    001          # Miller indices for Deposit
 maxArea       250          # Maximum area of lattices
 areaThresh    5.0          # Threshold for area misfit    [in %]
@@ -18,4 +18,3 @@ skipStep1     False        # Skip automatic generation of slabs distance True/Fa
 poissonRatio  True         # Scale z-axis in the Deposit according to Poisson ratio
 sandwich      False        # make a sandwich configuration S-D-S
 nVac          75           # Thickness of vacuum in A
-nEdgeIter     15           # number of iterations for algorithm transforming interface cell from rectangular to rhombohedral 
