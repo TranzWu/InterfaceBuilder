@@ -2321,7 +2321,7 @@ class Interface:
 		# No capping atom so far, set all indices to False
 		self.IfaceCapIdx = []
 		for i in range(len(self.IfacePosSC)):
-			self.IfaceCapIdx.append(np.zeros((len(self.IfacePosSC)),dtype=np.bool))
+			self.IfaceCapIdx.append(np.zeros((len(self.IfacePosSC[i])),dtype=np.bool))
 
 		if genHD or genHS:
 			self.IfacePosSC,self.IfaceAtmSC,self.idxDep,\
@@ -4189,7 +4189,8 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		try:
 			os.makedirs(dirname)
 		except OSError:
-			continue
+			pass
+	
 
 		# Write which vectors we are using for alignement
 		ftmp = open("%s/vectors.txt"%dirname,'w')
@@ -5352,7 +5353,10 @@ for subMillerString in subMillerList:
 		#resmat=np.array([resmat[2]])
 		scoreDirName = "SCORE-%s-%s"%(subMillerString,depMillerString)
 		scoreDirNameDIST = "%s/DIST"%scoreDirName
-		os.makedirs(scoreDirNameDIST)
+		try:
+			os.makedirs(scoreDirNameDIST)
+		except OSError:
+			pass
 
 		# if user asked for more results than there actually is, limit it.
 		if nConf > nResults: nConf = nResults
