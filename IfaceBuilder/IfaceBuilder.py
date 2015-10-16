@@ -2240,6 +2240,8 @@ class Interface:
 		self.IfaceCapIdx = np.array([])
 		# wbond - parameter for scoring function
 
+		usecheckedge = False
+
 
 		# Prepare xyz output for calculations
 
@@ -2290,19 +2292,19 @@ class Interface:
 		self.idxDep = []
 		self.idxSub = []
 		self.termAtm = []
+
 		for i in range(len(SubTermPos)):
 			for j in range(len(DepTermPos)):
 				SSurfPos = SubTermPos[i]
 				SSurfAtm = SubTermAtm[i]
 				DSurfPosScale = DepTermPos[j]
 				DSurfAtm = DepTermAtm[j]
-
 				posTmp,atmTmp,idxDepTmp,idxSubTmp,alignvec \
 					     = self.__alignsurfaces\
 				              (DepavecsR,SubavecsR,\
 					      DSurfPosScale,SSurfPos,\
 					      DSurfAtm,SSurfAtm,bfrac,\
-					      vecpair,vecSubR)
+					      vecpair,vecSubR,usecheckedge)
 				self.IfacePosSC.append(posTmp)
 				self.IfaceAtmSC.append(atmTmp)
 				self.idxDep.append(idxDepTmp)
@@ -2366,12 +2368,20 @@ class Interface:
 				self.IfaceAtmSC[i] = np.concatenate((self.IfaceAtmSC[i], newSubLabels))
 				self.IfaceCapIdx[i] = np.concatenate((self.IfaceCapIdx[i], newCapIdx))
 				self.IfaceVecs[2][-1] += topSub - botSub + self.SDdist[i]
-
-#		for i in range(15):
-#			self.IfacePosSC = self.__checkedge(self.IfacePosSC,self.IfaceVecs)
-		# Make sure all Deposit atoms are in periodic cell of Substrate.
-		# Do this for all interfaces
-		self.__checkEdge()
+		
+		if usecheckedge:
+			# OLD algorithm outputting rhomboidal interface cells. 
+			# In most cases checkEdge subroutine is used instead.
+			for i in range(len(self.IfacePosSC)):
+				print "HERE"
+				nEdgeIter = 100
+				for ii in range(nEdgeIter):
+					self.IfacePosSC[i] = self.__checkedge(self.IfacePosSC[i],self.IfaceVecs)
+		else:
+			# Make sure all Deposit atoms are in periodic cell of Substrate.
+			# Do this for all interfaces
+			# checkEdge subroutine preffered over checkedge subroutine
+			self.__checkEdge()
 
 
 		### BEGIN FOR SCORING FUNC
@@ -2406,7 +2416,7 @@ class Interface:
 #			print DSurfAtm[ii],i[0],i[1],i[2]
 #			ii+=1
 #		exit()
-		SSurfPos,SSurfAtm,SubavecsR,vecSubR,SH =\
+		SSurfPos,SSurfAtm,SubavecsRSC,vecSubR,SH =\
 		 	 			self.__CreateSurface\
 				                (posSubBlk,SubAtomsBlk,\
 				                 self.vecSub[0],self.vecSub[1],\
@@ -2415,7 +2425,7 @@ class Interface:
 						 genHD,genHS)
 
 		# Substrate with few layers on top
-		SSurfPosL,SSurfAtmL,SubavecsR,vecSubR,SH =\
+		SSurfPosL,SSurfAtmL,SubavecsRSC,vecSubR,SH =\
 		 	 			self.__CreateSurface\
 				                (posSubBlk,SubAtomsBlk,\
 				                 self.vecSub[0],self.vecSub[1],\
@@ -2460,35 +2470,35 @@ class Interface:
 #		self.IfacePosExSC,self.IfaceAtmExSC,self.idxDepExD,\
 #						     self.idxSubExD,alignvec \
 #					     = self.__alignsurfaces\
-#				              (DepavecsR,SubavecsR,\
+#				              (DepavecsR,SubavecsRSC,\
 #					      DSurfPosScaleEx,SSurfPos,\
 #					      DSurfAtmExSC,SSurfAtm,bfrac,\
-#					      vecpair,vecSubR)
+#					      vecpair,vecSubR,usecheckedge)
 
 		self.IfacePosExSC,self.IfaceAtmExSC,self.idxDepExD,\
 						     self.idxSubExD,alignvec \
 					     = self.__alignsurfaces\
-				              (DepavecsR,SubavecsR,\
+				              (DepavecsR,SubavecsRSC,\
 					      DSurfPosScaleExL,SSurfPos,\
 					      DSurfAtmExSCL,SSurfAtm,bfrac,\
-					      vecpair,vecSubR)
+					      vecpair,vecSubR,usecheckedge)
 
 		# Scaled Deposit on extented substrate
 #		self.IfacePosSExSC,self.IfaceAtmSExSC,self.idxDepExS,\
 #						     self.idxSubExS,alignvec \
 #					     = self.__alignsurfaces\
-#				              (DepavecsR,SubavecsR,\
+#				              (DepavecsR,SubavecsRSC,\
 #					      DSurfPosScale,SSurfPosEx,\
 #					      DSurfAtm,SSurfAtmEx,bfrac,\
-#					      vecpair,vecSubR)
+#					      vecpair,vecSubR,usecheckedge)
 
 		self.IfacePosSExSC,self.IfaceAtmSExSC,self.idxDepExS,\
 						     self.idxSubExS,alignvec \
 					     = self.__alignsurfaces\
-				              (DepavecsR,SubavecsR,\
+				              (DepavecsR,SubavecsRSC,\
 					      DSurfPosScale,SSurfPosExL,\
 					      DSurfAtm,SSurfAtmExL,bfrac,\
-					      vecpair,vecSubR)
+					      vecpair,vecSubR,usecheckedge)
 
 #		ii=0
 #		for i in self.IfacePosExSC:
@@ -2710,7 +2720,6 @@ class Interface:
 	#			tmpatm.append(planeatms[i])
 	#		planeatms = tmpatm
 			planeatms = planeatms[uniqueidx]
-
 		return planepos, planeatms, avecs, [vec1r,vec2r], Hpos
 
 
@@ -3109,7 +3118,7 @@ class Interface:
 		return posout,newlabels
 
 	def __alignsurfaces(self,avecsDep,avecsSub,posDep,posSub,labDep,\
-			    labSub,bfrac,vecpair,vecSubR):
+			    labSub,bfrac,vecpair,vecSubR,usecheckedge=False):
 
 		# Pick appropriate pair of anticipatory 
 		# vectors from substrate and deposit 
@@ -3125,8 +3134,8 @@ class Interface:
 			avecD = np.array([0,0,np.linalg.norm(avecsDep[0])])
 		
 		# Define resulting anticipatory vector
-		vector = avecS+avecD
-		vector = avecS
+		#vector = avecS+avecD
+		vector = avecS.copy()
 
 		# Define spacing between layers as average of substrate and 
 		# deposit spacing
@@ -3220,12 +3229,17 @@ class Interface:
 		topSub = max(posout[idxSub][:,2])
 		botDep = min(posout[idxDep][:,2])
 		spacing = botDep - topSub
-
+		
 		vector[-1] += spacing
-		vector[0] = 0.0
-		vector[1] = 0.0
 
-		return posout, labels, idxDep, idxSub, np.array(vector)
+		vectorOut = vector.copy()
+		vectorOut[0] = 0.0
+		vectorOut[1] = 0.0
+
+		if usecheckedge:
+			vectorOut = vector.copy()
+
+		return posout, labels, idxDep, idxSub, np.array(vectorOut)
 
 	def __scaleShear(self, pos, vec1D, vec2D, vec1S, vec2S, poissonRatio):
 
@@ -5315,6 +5329,10 @@ for subMillerString in subMillerList:
 		# pairs of anticipatory vectors.
 		avecsSub = Sub.avecs.copy()
 		avecsDep = Dep.avecs.copy()
+		print "AVEC SUB", avecsSub
+		print
+		print "AVEC DEP", avecsDep
+
 		ii = 0
 		# If there is only ona pair of anticipatory vectors,
 		# it means those are vectors pointing straight up, eg. [0,0,z].
