@@ -4114,7 +4114,7 @@ class Interface:
 		return score
 
 def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
-				     score,alignNo,iterNo,nVac,sandwich,\
+				     score,aligNo,iterNo,nVac,sandwich,\
 			             writeGEN=False,\
                                      writeAIMS=False,writeGULP=False,\
 				     writeVASP=False,\
@@ -4163,34 +4163,37 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		termAtmS = iface.atomTyp[termAtmSid]
 		termAtmD = iface.atomTyp[termAtmDid]
 
+		rhombOpt = True
+		if aligNo == 0: rhombOpt = False
+
 	#	if aligNo == 0 and confno == 0:
 		if iterNo == 1:
 			summaryFile = open('summary.txt','w')
 			summaryFileCSV = open('summary.csv','w')
-			summaryFile.write("%12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s\n"\
+			summaryFile.write("%12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s\n"\
 				     %("Substrate","Sub. Orient.", "Deposit", "Dep. Orient.",\
 				     "Alignment","Conf. No",\
 				     "area","nAtoms","nAtomsS","nAtomsD","S.term", "D.term", "x - stress","y-stress","angle-stress","area-stress",\
-				     "score","S-D distance"))
+				     "score","S-D distance", "Rhomb. opt."))
 
-			summaryFileCSV.write("%12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s, %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s\n"\
+			summaryFileCSV.write("%12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s, %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s\n"\
 				     %("Substrate","Sub. Orient.", "Deposit", "Dep. Orient.",\
 				     "Alignment","Conf. No",\
 				     "area","nAtoms","nAtomsS","natomsD","S.term","D.term","x - stress","y-stress","angle-stress","area-stress",\
-				     "score","S-D distance"))
+				     "score","S-D distance","Rhomb. opt."))
 
 			iterNo = 2
 		else:
 			summaryFile = open('summary.txt','a')
 			summaryFileCSV = open('summary.csv','a')
 
-		summaryFile.write("%12s   %12s   %12s   %12s   %12i   %12i   %12.2f   %12i   %12i   %12i   %12s   %12s   %12.2f   %12.2f   %12.2f   %12.2f   %12.3f   %12.2f\n"\
+		summaryFile.write("%12s   %12s   %12s   %12s   %12i   %12i   %12.2f   %12i   %12i   %12i   %12s   %12s   %12.2f   %12.2f   %12.2f   %12.2f   %12.3f   %12.2f   %12s\n"\
 				%(Sname,Sface,Dname,Dface,aligNo,confno,\
-				  area,natoms,natomsS,natomsD,termAtmS,termAtmD,mfit[0],mfit[1],mfit[2],mfit[3],score,iface.SDdist[t]))
+				  area,natoms,natomsS,natomsD,termAtmS,termAtmD,mfit[0],mfit[1],mfit[2],mfit[3],score,iface.SDdist[t],rhombOpt))
 
-		summaryFileCSV.write("%12s , %12s , %12s , %12s , %12i , %12i , %12.2f , %12i , %12i , %12i , %12s , %12s , %12.2f , %12.2f , %12.2f , %12.2f , %12.3f , %12.2f\n"\
+		summaryFileCSV.write("%12s , %12s , %12s , %12s , %12i , %12i , %12.2f , %12i , %12i , %12i , %12s , %12s , %12.2f , %12.2f , %12.2f , %12.2f , %12.3f , %12.2f , %12s\n"\
 				%(Sname,"'"+Sface+"'",Dname,"'"+Dface+"'",aligNo,confno,\
-				  area,natoms,natomsS,natomsD,termAtmS,termAtmD,mfit[0],mfit[1],mfit[2],mfit[3],score,iface.SDdist[t]))
+				  area,natoms,natomsS,natomsD,termAtmS,termAtmD,mfit[0],mfit[1],mfit[2],mfit[3],score,iface.SDdist[t],rhombOpt))
 
 		summaryFile.close()
 		summaryFileCSV.close()
