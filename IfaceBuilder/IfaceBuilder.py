@@ -2240,7 +2240,7 @@ class Interface:
 		self.IfaceCapIdx = np.array([])
 		# wbond - parameter for scoring function
 
-		usecheckedge = False
+		mkSlanted = False
 
 
 		# Prepare xyz output for calculations
@@ -2304,7 +2304,7 @@ class Interface:
 				              (DepavecsR,SubavecsR,\
 					      DSurfPosScale,SSurfPos,\
 					      DSurfAtm,SSurfAtm,bfrac,\
-					      vecpair,vecSubR,usecheckedge)
+					      vecpair,vecSubR,mkSlanted)
 				self.IfacePosSC.append(posTmp)
 				self.IfaceAtmSC.append(atmTmp)
 				self.idxDep.append(idxDepTmp)
@@ -2369,12 +2369,11 @@ class Interface:
 				self.IfaceCapIdx[i] = np.concatenate((self.IfaceCapIdx[i], newCapIdx))
 				self.IfaceVecs[2][-1] += topSub - botSub + self.SDdist[i]
 		
-		if usecheckedge:
+		if mkSlanted:
 			# OLD algorithm outputting rhomboidal interface cells. 
 			# In most cases checkEdge subroutine is used instead.
 			for i in range(len(self.IfacePosSC)):
-				print "HERE"
-				nEdgeIter = 100
+				nEdgeIter = 15
 				for ii in range(nEdgeIter):
 					self.IfacePosSC[i] = self.__checkedge(self.IfacePosSC[i],self.IfaceVecs)
 		else:
@@ -2473,7 +2472,7 @@ class Interface:
 #				              (DepavecsR,SubavecsRSC,\
 #					      DSurfPosScaleEx,SSurfPos,\
 #					      DSurfAtmExSC,SSurfAtm,bfrac,\
-#					      vecpair,vecSubR,usecheckedge)
+#					      vecpair,vecSubR,mkSlanted)
 
 		self.IfacePosExSC,self.IfaceAtmExSC,self.idxDepExD,\
 						     self.idxSubExD,alignvec \
@@ -2481,7 +2480,7 @@ class Interface:
 				              (DepavecsR,SubavecsRSC,\
 					      DSurfPosScaleExL,SSurfPos,\
 					      DSurfAtmExSCL,SSurfAtm,bfrac,\
-					      vecpair,vecSubR,usecheckedge)
+					      vecpair,vecSubR,mkSlanted)
 
 		# Scaled Deposit on extented substrate
 #		self.IfacePosSExSC,self.IfaceAtmSExSC,self.idxDepExS,\
@@ -2490,7 +2489,7 @@ class Interface:
 #				              (DepavecsR,SubavecsRSC,\
 #					      DSurfPosScale,SSurfPosEx,\
 #					      DSurfAtm,SSurfAtmEx,bfrac,\
-#					      vecpair,vecSubR,usecheckedge)
+#					      vecpair,vecSubR,mkSlanted)
 
 		self.IfacePosSExSC,self.IfaceAtmSExSC,self.idxDepExS,\
 						     self.idxSubExS,alignvec \
@@ -2498,7 +2497,7 @@ class Interface:
 				              (DepavecsR,SubavecsRSC,\
 					      DSurfPosScale,SSurfPosExL,\
 					      DSurfAtm,SSurfAtmExL,bfrac,\
-					      vecpair,vecSubR,usecheckedge)
+					      vecpair,vecSubR,mkSlanted)
 
 #		ii=0
 #		for i in self.IfacePosExSC:
@@ -3118,7 +3117,7 @@ class Interface:
 		return posout,newlabels
 
 	def __alignsurfaces(self,avecsDep,avecsSub,posDep,posSub,labDep,\
-			    labSub,bfrac,vecpair,vecSubR,usecheckedge=False):
+			    labSub,bfrac,vecpair,vecSubR,mkSlanted=False):
 
 		# Pick appropriate pair of anticipatory 
 		# vectors from substrate and deposit 
@@ -3236,7 +3235,7 @@ class Interface:
 		vectorOut[0] = 0.0
 		vectorOut[1] = 0.0
 
-		if usecheckedge:
+		if mkSlanted:
 			vectorOut = vector.copy()
 
 		return posout, labels, idxDep, idxSub, np.array(vectorOut)
@@ -4117,7 +4116,7 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				     score,aligNo,iterNo,nVac,sandwich,\
 			             writeGEN=False,\
                                      writeAIMS=False,writeGULP=False,\
-				     writeVASP=False,\
+				     writeVASP=False,writeNWChem=False,\
 				     cstrlxD=0,cstrlxS=0,\
 				     cstrlxH=False,\
 				     bondmod=False): 
@@ -4134,11 +4133,25 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 
 	norma = np.linalg.norm(iface.IfaceVecs[0])
 	normb = np.linalg.norm(iface.IfaceVecs[1])
-
+	normc = np.linalg.norm(iface.IfaceVecs[2])
+	
+	# Gamma angle - x-y vectors
 	cosphi = np.dot(iface.IfaceVecs[0],iface.IfaceVecs[1])/(norma*normb)
 	phi = m.acos(cosphi)
 	sinphi = m.sin(phi)
+	gamma =  phi * 180/m.pi
 
+	# Alpha angle - x-z vectors
+	cosphi = np.dot(iface.IfaceVecs[0],iface.IfaceVecs[2])/(norma*normc)
+	phi = m.acos(cosphi)
+	alpha = phi * 180/m.pi
+
+	# Beta angle - y-z vectors
+	cosphi = np.dot(iface.IfaceVecs[1],iface.IfaceVecs[2])/(norma*normc)
+	phi = m.acos(cosphi)
+	beta = phi * 180/m.pi
+
+	# Interface area
 	area = norma * normb * sinphi
 	
 	for t in range(len(iface.IfacePosSC)): # Iterate over all possible intrfaces with different faces
@@ -4174,13 +4187,13 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				     %("Substrate","Sub. Orient.", "Deposit", "Dep. Orient.",\
 				     "Alignment","Conf. No",\
 				     "area","nAtoms","nAtomsS","nAtomsD","S.term", "D.term", "x - stress","y-stress","angle-stress","area-stress",\
-				     "score","S-D distance", "Rhomb. opt."))
+				     "score","S-D distance", "Slanted"))
 
 			summaryFileCSV.write("%12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s, %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s\n"\
 				     %("Substrate","Sub. Orient.", "Deposit", "Dep. Orient.",\
 				     "Alignment","Conf. No",\
 				     "area","nAtoms","nAtomsS","natomsD","S.term","D.term","x - stress","y-stress","angle-stress","area-stress",\
-				     "score","S-D distance","Rhomb. opt."))
+				     "score","S-D distance","Slanted"))
 
 			iterNo = 2
 		else:
@@ -4263,18 +4276,35 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 					%(dirname,Dname,Dface,Sname,Sface,confno)
 
 				# Files to write VASP input without capping atoms
-				filenameVASPNoH = "%s/POSCAR.%s%s-%s%s-%2.1f.POSCAR"\
+				filenameVASPNoH = "%s/%s%s-%s%s-%2.1f-NoH.POSCAR"\
 					%(dirname,Dname,Dface,Sname,Sface,confno)
-				filenameSVASPNoH = "%s/POSCAR.%s%s-%s%s-%2.1f-S.POSCAR"\
+				filenameSVASPNoH = "%s/%s%s-%s%s-%2.1f-S-NoH.POSCAR"\
 					%(dirname,Dname,Dface,Sname,Sface,confno)
-				filenameDVASPNoH = "%s/POSCAR.%s%s-%s%s-%2.1f-D.POSCAR"\
+				filenameDVASPNoH = "%s/%s%s-%s%s-%2.1f-D-NoH.POSCAR"\
 					%(dirname,Dname,Dface,Sname,Sface,confno)
 
-				filenameVASP_POT_NoH = "%s/POTCAR.%s%s-%s%s-%2.1f"\
+				filenameVASP_POT_NoH = "%s/%s%s-%s%s-%2.1f-NoH.POTCAR"\
 					%(dirname,Dname,Dface,Sname,Sface,confno)
-				filenameSVASP_POT_NoH = "%s/POTCAR.%s%s-%s%s-%2.1f-S"\
+				filenameSVASP_POT_NoH = "%s/%s%s-%s%s-%2.1f-S-NoH.POTCAR"\
 					%(dirname,Dname,Dface,Sname,Sface,confno)
-				filenameDVASP_POT_NoH = "%s/POTCAR.%s%s-%s%s-%2.1f-D"\
+				filenameDVASP_POT_NoH = "%s/%s%s-%s%s-%2.1f-D-NoH.POTCAR"\
+					%(dirname,Dname,Dface,Sname,Sface,confno)
+
+			if writeNWChem:
+				#NWChem output
+				filenameNWC= "%s/%s%s-%s%s-%2.1f.nwc"\
+					%(dirname,Dname,Dface,Sname,Sface,confno)
+				filenameSNWC = "%s/%s%s-%s%s-%2.1f-S.nwc"\
+					%(dirname,Dname,Dface,Sname,Sface,confno)
+				filenameDNWC = "%s/%s%s-%s%s-%2.1f-D.nwc"\
+					%(dirname,Dname,Dface,Sname,Sface,confno)
+
+				# Files to write NWChem input without capping atoms
+				filenameNWCNoH = "%s/%s%s-%s%s-%2.1f-NoH.nwc"\
+					%(dirname,Dname,Dface,Sname,Sface,confno)
+				filenameNWCNoH = "%s/%s%s-%s%s-%2.1f-S-NoH.nwc"\
+					%(dirname,Dname,Dface,Sname,Sface,confno)
+				filenameNWCNoH = "%s/%s%s-%s%s-%2.1f-D-NoH.nwc"\
 					%(dirname,Dname,Dface,Sname,Sface,confno)
 
 
@@ -4336,6 +4366,21 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				filenameDVASP_POT_NoH = "%s/POTCAR.%s%s-%s%s-%i-%s-%s-D-NoH"\
 					%(dirname,Dname,Dface,Sname,Sface,confno,termAtmD,termAtmS)
 
+			if writeVASP:
+				filenameNWC  = "%s/%s%s-%s%s-%i-%s-%s.nwc"\
+					%(dirname,Dname,Dface,Sname,Sface,confno,termAtmD,termAtmS)
+				filenameSNWC = "%s/%s%s-%s%s-%i-%s-%s-S.nwc"\
+					%(dirname,Dname,Dface,Sname,Sface,confno,termAtmD,termAtmS)
+				filenameDNWC = "%s/%s%s-%s%s-%i-%s-%s-D.nwc"\
+					%(dirname,Dname,Dface,Sname,Sface,confno,termAtmD,termAtmS)
+
+				# Files to write VASP input without capping atoms
+				filenameNWCNoH  = "%s/%s%s-%s%s-%i-%s-%s-NoH.nwc"\
+					%(dirname,Dname,Dface,Sname,Sface,confno,termAtmD,termAtmS)
+				filenameSNWCNoH = "%s/%s%s-%s%s-%i-%s-%s-S-NoH.nwc"\
+					%(dirname,Dname,Dface,Sname,Sface,confno,termAtmD,termAtmS)
+				filenameDNWCNoH = "%s/%s%s-%s%s-%i-%s-%s-D-NoH.nwc"\
+					%(dirname,Dname,Dface,Sname,Sface,confno,termAtmD,termAtmS)
 
 			# Index file with number of atoms in 
 			# Interface,Deposit and Substate
@@ -4369,6 +4414,15 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 			fileVASP_POT_NoH  = open(filenameVASP_POT_NoH,'w')
 			fileSVASP_POT_NoH = open(filenameSVASP_POT_NoH,'w')
 			fileDVASP_POT_NoH = open(filenameDVASP_POT_NoH,'w')
+
+		if writeNWChem:
+			fileNWC      = open(filenameNWC,'w')
+			fileSNWC     = open(filenameSNWC,'w')
+			fileDNWC     = open(filenameDNWC,'w')
+
+			fileNWCNoH       = open(filenameNWCNoH,'w')
+			fileSNWCNoH      = open(filenameSNWCNoH,'w')
+			fileDNWCNoH      = open(filenameDNWCNoH,'w')
 
 		fileIDX = open(filenameIDX,'w')
 
@@ -4560,6 +4614,16 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				      iface.IfaceVecs[2][2]*nVacM))
 			fileGULPD.write("0 0 0 0 0 0\n")
 			fileGULPD.write("cartesian\n")
+
+		if writeNWChem:
+			print "Generating NWChem .nwc file"
+			fileNWC.write("geometry units angstrom\n")    
+			fileSNWC.write("geometry units angstrom\n")   
+			fileDNWC.write("geometry units angstrom\n")  
+			fileNWCNoH.write("geometry units angstrom\n")  
+			fileSNWCNoH.write("geometry units angstrom\n")  
+			fileDNWCNoH.write("geometry units angstrom\n")  
+
 		#Find top and bottom layer
 		threshold = 0.2 # define threshol to add to top and bottom for 
 				# float comparisons
@@ -4592,7 +4656,7 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 	#		order = np.unique(order)
 	#		top = round(order[(-1*cstrlxD)-1],6) # top atom (deposit)
 	#		top -= threshold
-			top = nLS +iface.SDdist + (2*(nLD/3.0))
+			top = nLS +iface.SDdist[t] + (2*(nLD/3.0))
 			if sandwich:
 				dFrac = nLD/3.0
 				mTop = topDep - dFrac
@@ -4620,8 +4684,26 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 
 		mBottomD = nLD + (nLD/3.0)
 		mTopD    = nLD + (2*(nLD/3.0))
-
+		
+		if writeNWChem:
+			NWChemSubIdx = []
+			NWChemDepIdx = []
 		for i in range(len(iface.IfacePosSC[t])):
+			if writeNWChem:
+				# For NWChem output construct global matrices that indicates 
+				# if atom is in substrte/deposit. This is needed to create output
+				# without hydrogens
+
+				if i in iface.idxSubH[t]:
+					NWChemSubIdx.append(1)
+				else:
+					NWChemSubIdx.append(0)
+					
+				if i in iface.idxDepH[t]:
+					NWChemDepIdx.append(1)
+				else:
+					NWChemDepIdx.append(0)
+
 			atom = iface.atomTyp[iface.IfaceAtmSC[t][i]]
 			x = iface.IfacePosSC[t][i][0]
 			y = iface.IfacePosSC[t][i][1]
@@ -4655,6 +4737,8 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 					fileGULP.write(("%4s    core   %12.6f   %12.6f"
 					"%12.6f 0.0 1.0 0.0 1 1 1\n")%(atom,x,y,z))
 
+			if writeNWChem:
+				fileNWC.write("%-4s   %12.6f   %12.6f   %12.6f\n"%(atom,x,y,z))
 
 			# Write isolated Substrate and Deposit
 			# Only XYZ and AIMS file are written. Since 
@@ -4703,6 +4787,9 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 						"%12.6f 0.0 1.0 0.0 1 1 1\n")\
 								%(atom,x,y,z))
 
+				if writeNWChem:
+					fileSNWC.write("%-4s   %12.6f   %12.6f   %12.6f\n"%(atom,x,y,z))
+
 
 			if i in iface.idxDepH[t]: # Write isolated Deposit
 				fileD.write("%-4s   %12.6f   %12.6f   %12.6f\n"%\
@@ -4744,6 +4831,33 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 						(("%4s    core   %12.6f   %12.6f"
 						"%12.6f 0.0 1.0 0.0 1 1 1\n")\
 								%(atom,x,y,z))
+
+				if writeNWChem:
+					fileDNWC.write("%-4s   %12.6f   %12.6f   %12.6f\n"%(atom,x,y,z))
+		
+		# Write NWCHem input, butc WITHOUT capping atoms
+		# We use -iface.IfaceCapIdx, as in the array True is capping atom, False for materials atom
+		# and we want indices of material atom only
+		
+		if writeNWChem:
+			NWChemSubIdx = np.array(NWChemSubIdx)
+			NWChemDepIdx = np.array(NWChemDepIdx)
+			NWChemPosNoCap = iface.IfacePosSC[t][-iface.IfaceCapIdx[t]]
+			NWChemAtmNoCap = iface.IfaceAtmSC[t][-iface.IfaceCapIdx[t]]
+			NWChemSubIdxNoCap = NWChemSubIdx[-iface.IfaceCapIdx[t]]
+			NWChemDepIdxNoCap = NWChemDepIdx[-iface.IfaceCapIdx[t]]
+
+			for i in range(len(NWChemPosNoCap)):
+				atom = iface.atomTyp[NWChemAtmNoCap[i]]
+				x = NWChemPosNoCap[i][0]
+				y = NWChemPosNoCap[i][1]
+				z = NWChemPosNoCap[i][2]
+				fileNWCNoH.write("%-4s   %12.6f   %12.6f   %12.6f\n"%(atom,x,y,z))
+
+				if NWChemSubIdxNoCap[i]: 
+					fileSNWCNoH.write("%-4s   %12.6f   %12.6f   %12.6f\n"%(atom,x,y,z))
+				if NWChemDepIdxNoCap[i]: 
+					fileDNWCNoH.write("%-4s   %12.6f   %12.6f   %12.6f\n"%(atom,x,y,z))
 
 		# Finish GULP file - write potentials. 
 		if writeGULP:
@@ -4879,34 +4993,34 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				z = IfacePosSCVASP[i][2]
 		
 				# Write interface
-				cOpt = "F F F"
+				cOpt = "T T T"
 				if (cstrlxH) and atom == "H":
-					cOpt = "T T F"
+					cOpt = "F F T"
 
 				if frozenidxVASP[i]:
-					cOpt = "T T F"
+					cOpt = "F F T"
 
 				fileVASP.write("%12.6f   %12.6f   %12.6f %s\n"%\
 					      (x,y,z,cOpt))
 
 				# Write substrate
 				if idxSubHVASP[i]:
-					cOpt = "F F F"
+					cOpt = "T T T"
 					if (cstrlxH) and atom == "H":
-						cOpt = "T T F"
+						cOpt = "F F T"
 					if (cstrlxS) and (round(z,6) <= bot):
-						cOpt = "T T F"
+						cOpt = "F F T"
 					fileSVASP.write\
 					     ("%12.6f   %12.6f   %12.6f %s\n"%\
 					     (x,y,z,cOpt))
 
 				# Write deposit
 				if idxDepHVASP[i]:
-					cOpt = "F F F"
+					cOpt = "T T T"
 					if (cstrlxH) and atom == "H":
-						cOpt = "T T F"
+						cOpt = "F F T"
 					if (cstrlxD) and (round(z,6) >= top):
-						cOpt = "T T F"
+						cOpt = "F F T"
 					fileDVASP.write\
 					     ("%12.6f   %12.6f   %12.6f %s\n"%\
 					     (x,y,z,cOpt))
@@ -4995,38 +5109,50 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				
 		
 				# Write interface
-				cOpt = "F F F"
+				cOpt = "T T T"
 				if (cstrlxH) and atom == "H":
-					cOpt = "T T F"
+					cOpt = "F F T"
 
 				if frozenidxVASP[i]:
-					cOpt = "T T F"
+					cOpt = "F F T"
 
 				fileVASPNoH.write("%12.6f   %12.6f   %12.6f %s\n"%\
 					      (x,y,z,cOpt))
 
 				# Write substrate
 				if idxSubHVASP[i]:
-					cOpt = "F F F"
+					cOpt = "T T T"
 					if (cstrlxH) and atom == "H":
-						cOpt = "T T F"
+						cOpt = "F F T"
 					if (cstrlxS) and (round(z,6) <= bot):
-						cOpt = "T T F"
+						cOpt = "F F T"
 					fileSVASPNoH.write\
 					     ("%12.6f   %12.6f   %12.6f %s\n"%\
 					     (x,y,z,cOpt))
 
 				# Write deposit
 				if idxDepHVASP[i]:
-					cOpt = "F F F"
+					cOpt = "T T T"
 					if (cstrlxH) and atom == "H":
-						cOpt = "T T F"
+						cOpt = "F F T"
 					if (cstrlxD) and (round(z,6) >= top):
-						cOpt = "T T F"
+						cOpt = "F F T"
 					fileDVASPNoH.write\
 					     ("%12.6f   %12.6f   %12.6f %s\n"%\
 					     (x,y,z,cOpt))
 		# End of VASP writing
+
+		# Finish NWCHEM writing
+		if writeNWChem:
+			NWChemline = "system crystal\n lat_a %12.6f\n lat_b %12.6f\n lat_c %12.6f\n alpha %12.6f\n beta %12.6f\n gamma %12.6f\nend"\
+		             %(norma,normb,normc,alpha,beta,gamma)
+			fileNWC.write(NWChemline)
+			fileSNWC.write(NWChemline)
+			fileDNWC.write(NWChemline)  
+			fileNWCNoH.write(NWChemline)  
+			fileSNWCNoH.write(NWChemline)  
+			fileDNWCNoH.write(NWChemline)  
+		# End of NWChem writing
 
 
 		# Write Interface, Deposit, Substarte atoms numbers, and area to the IDX file
@@ -5063,6 +5189,14 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 			fileGULP.close()
 			fileGULPS.close()
 			fileGULPD.close()
+		if writeNWChem:
+			fileNWC.close()
+			fileSNWC.close()
+			fileDNWC.close()
+			fileNWCNoH.close()
+			fileSNWCNoH.close()
+			fileDNWCNoH.close()
+
 		fileIDX.close()
 				
 		if writeGEN:
@@ -5332,9 +5466,6 @@ for subMillerString in subMillerList:
 		# pairs of anticipatory vectors.
 		avecsSub = Sub.avecs.copy()
 		avecsDep = Dep.avecs.copy()
-		print "AVEC SUB", avecsSub
-		print
-		print "AVEC DEP", avecsDep
 
 		ii = 0
 		# If there is only ona pair of anticipatory vectors,
@@ -5515,7 +5646,8 @@ for subMillerString in subMillerList:
 							writeAIMS=True,\
 							writeGULP=False,\
 							writeVASP=True,\
-							cstrlxD=0,cstrlxS=0,\
+							writeNWChem=True,\
+							cstrlxD=3,cstrlxS=2,\
 							cstrlxH=False,\
 							bondmod=False)
 				scresultsS.append(resultstmpS)
