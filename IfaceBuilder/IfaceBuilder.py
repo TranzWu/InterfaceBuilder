@@ -4995,10 +4995,10 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				# Write interface
 				cOpt = "T T T"
 				if (cstrlxH) and atom == "H":
-					cOpt = "F F T"
+					cOpt = "T T F"
 
 				if frozenidxVASP[i]:
-					cOpt = "F F T"
+					cOpt = "T T F"
 
 				fileVASP.write("%12.6f   %12.6f   %12.6f %s\n"%\
 					      (x,y,z,cOpt))
@@ -5007,9 +5007,9 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				if idxSubHVASP[i]:
 					cOpt = "T T T"
 					if (cstrlxH) and atom == "H":
-						cOpt = "F F T"
+						cOpt = "T T F"
 					if (cstrlxS) and (round(z,6) <= bot):
-						cOpt = "F F T"
+						cOpt = "T T F"
 					fileSVASP.write\
 					     ("%12.6f   %12.6f   %12.6f %s\n"%\
 					     (x,y,z,cOpt))
@@ -5018,9 +5018,9 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				if idxDepHVASP[i]:
 					cOpt = "T T T"
 					if (cstrlxH) and atom == "H":
-						cOpt = "F F T"
+						cOpt = "T T F"
 					if (cstrlxD) and (round(z,6) >= top):
-						cOpt = "F F T"
+						cOpt = "T T F"
 					fileDVASP.write\
 					     ("%12.6f   %12.6f   %12.6f %s\n"%\
 					     (x,y,z,cOpt))
@@ -5111,10 +5111,10 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				# Write interface
 				cOpt = "T T T"
 				if (cstrlxH) and atom == "H":
-					cOpt = "F F T"
+					cOpt = "T T F"
 
 				if frozenidxVASP[i]:
-					cOpt = "F F T"
+					cOpt = "T T F"
 
 				fileVASPNoH.write("%12.6f   %12.6f   %12.6f %s\n"%\
 					      (x,y,z,cOpt))
@@ -5123,9 +5123,9 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				if idxSubHVASP[i]:
 					cOpt = "T T T"
 					if (cstrlxH) and atom == "H":
-						cOpt = "F F T"
+						cOpt = "T T F"
 					if (cstrlxS) and (round(z,6) <= bot):
-						cOpt = "F F T"
+						cOpt = "T T F"
 					fileSVASPNoH.write\
 					     ("%12.6f   %12.6f   %12.6f %s\n"%\
 					     (x,y,z,cOpt))
@@ -5134,9 +5134,9 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				if idxDepHVASP[i]:
 					cOpt = "T T T"
 					if (cstrlxH) and atom == "H":
-						cOpt = "F F T"
+						cOpt = "T T F"
 					if (cstrlxD) and (round(z,6) >= top):
-						cOpt = "F F T"
+						cOpt = "T T F"
 					fileDVASPNoH.write\
 					     ("%12.6f   %12.6f   %12.6f %s\n"%\
 					     (x,y,z,cOpt))
