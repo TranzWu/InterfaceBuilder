@@ -2287,11 +2287,31 @@ class Interface:
 		DepTermPos, DepTermAtm, DepTermID =  self.__diffTerminations(DSurfPosScale, DSurfAtm)
 		SubTermPos, SubTermAtm, SubTermID =  self.__diffTerminations(SSurfPos, SSurfAtm)
 
+		# Begin check for polarity
+		# For simplicity of implementation, we will do checkPolar subroutine to work on single element of {sub,dep}TermPos matrices 
+		# at the time, and gather the results in {sub,dep}Polar and {sub,dep}Periodicity
+		subPolar = []
+		subPeriodicity = []
+		depPolar = []
+		depPeriodicity = []
+		for i in range(len(SubTermPos)):
+			pol, per = self.__checkPolar(SubTermPos[i],SubTermAtm[i],self.atomTyp,vecSubR[0],vecSubR[1])
+			subPolar.append(pol)
+			subPeriodicity.append(per)
+
+		for i in range(len(DepTermPos)):
+			pol, per = self.__checkPolar(DepTermPos[i],DepTermAtm[i],self.atomTyp,vecSubR[0],vecSubR[1])
+			depPolar.append(pol)
+			depPeriodicity.append(per)
+		# End check for polarity
+
 		self.IfacePosSC = []
 		self.IfaceAtmSC = []
 		self.idxDep = []
 		self.idxSub = []
 		self.termAtm = []
+		self.materialPolarity = []
+		self.materialPeriodicty = []
 
 		for i in range(len(SubTermPos)):
 			for j in range(len(DepTermPos)):
@@ -2310,6 +2330,8 @@ class Interface:
 				self.idxDep.append(idxDepTmp)
 				self.idxSub.append(idxSubTmp)
 				self.termAtm.append([SubTermID[i],DepTermID[j]])
+				self.materialPolarity.append([subPolar[i],depPolar[i]])
+				self.materialPeriodicty.append([subPeriodicity[i], depPeriodicity[i]])
 
 		# Make vectors globally available:
 		self.IfaceVecs = [vecSubR[0],vecSubR[1],alignvec]
@@ -3530,12 +3552,41 @@ class Interface:
 		# Translate
 		pos[idx] = pos[idx] + xvec
 
-
-		#for i in pos[idx]:
-#		for i in pos:
-#			print "Al", i[0],i[1],i[2]
-
 		return pos
+
+	def __checkPolar(self,positions,atomLabels,atomTypes,vecX,vecY):
+		# Description of the variables:
+		# - positions: of the atoms, numpy.array(Natoms,3)
+		# - atomLabels: numpy.array with integers denoting atom types, 
+		#   i.e [0,1,1,0,2,...,natoms]. The order of the atoms is the same 
+		#   as in positions array.
+		# - atomTypes: dictionary that allows to decode entries in the atomLabels
+		#   in terms of real chemical species. 
+		#   Example:
+		#    atomTypes = {0: 'Ga', 1: 'As', 2: 'H'}
+		#    which means that integer 0 corresponds to "Ga", integer 1 to "As" and 2 to "H"
+		#   Usage:
+		#    find what is the atom type of the 3rd atom in the structure:
+		#    atomLabels = [0,1,1,0,2]
+		#    atom = atomLabels[2]  # remeberin Python we count from 0, so 3rd atom is 2nd in the structure
+		#    type = atomTypes[atom]
+		#    In this case atom will be set to "1", and type to "As"
+		#
+		# - vecX: lattice vector X, numpy.array[x1, x2, x3]
+		# - vecY: lattice vector Y, numpy.array[y1, y2, y3]
+
+		#  Start implementation:
+		#  Do lots of cool stuff here
+
+		#  Return values are 
+		#  polar = {True,False} - is structure polar or not
+		#  periodicity = 0  - integer number saying what is the periodicity of the strucure
+		
+		# Setting dummy values now:
+		polar = False
+		periodicity = 0
+
+		return polar, periodicity
 
 	def __idTermAtoms(self,coord,atom):
 		# Find which atom type terminates the interface surface in the material
@@ -4176,6 +4227,11 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		termAtmS = iface.atomTyp[termAtmSid]
 		termAtmD = iface.atomTyp[termAtmDid]
 
+		subPolar = iface.materialPolarity[t][0]
+		depPolar = iface.materialPolarity[t][1]
+		supPerio = iface.materialPeriodicty[t][0]
+		depPerio = iface.materialPeriodicty[t][1]
+
 		rhombOpt = True
 		if aligNo == 0: rhombOpt = False
 
@@ -4183,30 +4239,30 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		if iterNo == 1:
 			summaryFile = open('summary.txt','w')
 			summaryFileCSV = open('summary.csv','w')
-			summaryFile.write("%12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s\n"\
+			summaryFile.write("%12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %12s | %16s | %12s | %16s \n"\
 				     %("Substrate","Sub. Orient.", "Deposit", "Dep. Orient.",\
 				     "Alignment","Conf. No",\
 				     "area","nAtoms","nAtomsS","nAtomsD","S.term", "D.term", "x - stress","y-stress","angle-stress","area-stress",\
-				     "score","S-D distance", "Slanted"))
+				     "score","S-D distance", "Slanted","Sub. Polar", "Sub. Periodicity", "Dep. Polar", "Dep. Periodicity"))
 
-			summaryFileCSV.write("%12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s, %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s\n"\
+			summaryFileCSV.write("%12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s, %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %12s , %16s , %12s , %16s\n"\
 				     %("Substrate","Sub. Orient.", "Deposit", "Dep. Orient.",\
 				     "Alignment","Conf. No",\
 				     "area","nAtoms","nAtomsS","natomsD","S.term","D.term","x - stress","y-stress","angle-stress","area-stress",\
-				     "score","S-D distance","Slanted"))
+				     "score","S-D distance","Slanted","Sub. Polar", "Sub. Periodicity", "Dep. Polar", "Dep. Periodicity"))
 
 			iterNo = 2
 		else:
 			summaryFile = open('summary.txt','a')
 			summaryFileCSV = open('summary.csv','a')
 
-		summaryFile.write("%12s   %12s   %12s   %12s   %12i   %12i   %12.2f   %12i   %12i   %12i   %12s   %12s   %12.2f   %12.2f   %12.2f   %12.2f   %12.3f   %12.2f   %12s\n"\
+		summaryFile.write("%12s   %12s   %12s   %12s   %12i   %12i   %12.2f   %12i   %12i   %12i   %12s   %12s   %12.2f   %12.2f   %12.2f   %12.2f   %12.3f   %12.2f   %12s   %12s   %16i   %12s   %16i\n"\
 				%(Sname,Sface,Dname,Dface,aligNo,confno,\
-				  area,natoms,natomsS,natomsD,termAtmS,termAtmD,mfit[0],mfit[1],mfit[2],mfit[3],score,iface.SDdist[t],rhombOpt))
+				  area,natoms,natomsS,natomsD,termAtmS,termAtmD,mfit[0],mfit[1],mfit[2],mfit[3],score,iface.SDdist[t],rhombOpt,subPolar,supPerio,depPolar,depPerio))
 
-		summaryFileCSV.write("%12s , %12s , %12s , %12s , %12i , %12i , %12.2f , %12i , %12i , %12i , %12s , %12s , %12.2f , %12.2f , %12.2f , %12.2f , %12.3f , %12.2f , %12s\n"\
+		summaryFileCSV.write("%12s , %12s , %12s , %12s , %12i , %12i , %12.2f , %12i , %12i , %12i , %12s , %12s , %12.2f , %12.2f , %12.2f , %12.2f , %12.3f , %12.2f , %12s, %12s , %16i , %12s ,%16i\n"\
 				%(Sname,"'"+Sface+"'",Dname,"'"+Dface+"'",aligNo,confno,\
-				  area,natoms,natomsS,natomsD,termAtmS,termAtmD,mfit[0],mfit[1],mfit[2],mfit[3],score,iface.SDdist[t],rhombOpt))
+				  area,natoms,natomsS,natomsD,termAtmS,termAtmD,mfit[0],mfit[1],mfit[2],mfit[3],score,iface.SDdist[t],rhombOpt,subPolar,supPerio,depPolar,depPerio))
 
 		summaryFile.close()
 		summaryFileCSV.close()
