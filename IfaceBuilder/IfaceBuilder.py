@@ -2287,7 +2287,6 @@ class Interface:
 		DepTermPos, DepTermAtm, DepTermID =  self.__diffTerminations(DSurfPosScale, DSurfAtm)
 		SubTermPos, SubTermAtm, SubTermID =  self.__diffTerminations(SSurfPos, SSurfAtm)
 
-		# Begin check for polarity
 		# For simplicity of implementation, we will do checkPolar subroutine to work on single element of {sub,dep}TermPos matrices 
 		# at the time, and gather the results in {sub,dep}Polar and {sub,dep}Periodicity
 		subPolar = []
@@ -2295,15 +2294,14 @@ class Interface:
 		depPolar = []
 		depPeriodicity = []
 		for i in range(len(SubTermPos)):
-			pol, per = self.__checkPolar(SubTermPos[i],SubTermAtm[i],self.atomTyp,vecSubR[0],vecSubR[1])
+			pol, per = self.__checkPolar(SubTermPos[i].copy(),SubTermAtm[i],self.atomTyp,vecSubR[0],vecSubR[1])
 			subPolar.append(pol)
 			subPeriodicity.append(per)
 
 		for i in range(len(DepTermPos)):
-			pol, per = self.__checkPolar(DepTermPos[i],DepTermAtm[i],self.atomTyp,vecSubR[0],vecSubR[1])
+			pol, per = self.__checkPolar(DepTermPos[i].copy(),DepTermAtm[i],self.atomTyp,vecSubR[0],vecSubR[1])
 			depPolar.append(pol)
 			depPeriodicity.append(per)
-		# End check for polarity
 
 		self.IfacePosSC = []
 		self.IfaceAtmSC = []
@@ -3555,8 +3553,7 @@ class Interface:
 		return pos
 
 	def __checkPolar(self,positions,atomLabels,atomTypes,vecX,vecY):
-		# Description of the input variables:
-		# - self: not used here, but required by Python
+		# Description of the variables:
 		# - positions: of the atoms, numpy.array(Natoms,3)
 		# - atomLabels: numpy.array with integers denoting atom types, 
 		#   i.e [0,1,1,0,2,...,natoms]. The order of the atoms is the same 
@@ -3575,8 +3572,13 @@ class Interface:
 		#
 		# - vecX: lattice vector X, numpy.array[x1, x2, x3]
 		# - vecY: lattice vector Y, numpy.array[y1, y2, y3]
+		#
+		# 
 
 		#  Start implementation:
+		# Flip the slab so the (hkl) layer is on the bottom and everything else is above it
+		positions[:,2] *= -1
+		#  
 		#  Do lots of cool stuff here
 
 		#  Return values are 
