@@ -3555,7 +3555,8 @@ class Interface:
 		return pos
 
 	def __checkPolar(self,positions,atomLabels,atomTypes,vecX,vecY):
-		# Description of the variables:
+		# Description of the input variables:
+		# - self: not used here, but required by Python
 		# - positions: of the atoms, numpy.array(Natoms,3)
 		# - atomLabels: numpy.array with integers denoting atom types, 
 		#   i.e [0,1,1,0,2,...,natoms]. The order of the atoms is the same 
