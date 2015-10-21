@@ -3554,6 +3554,7 @@ class Interface:
 
 	def __checkPolar(self,positions,atomLabels,atomTypes,vecX,vecY):
 		# Description of the variables:
+		# - self: not used here, required because subroutine is inside Class
 		# - positions: of the atoms, numpy.array(Natoms,3)
 		# - atomLabels: numpy.array with integers denoting atom types, 
 		#   i.e [0,1,1,0,2,...,natoms]. The order of the atoms is the same 
@@ -3566,7 +3567,7 @@ class Interface:
 		#   Usage:
 		#    find what is the atom type of the 3rd atom in the structure:
 		#    atomLabels = [0,1,1,0,2]
-		#    atom = atomLabels[2]  # remeberin Python we count from 0, so 3rd atom is 2nd in the structure
+		#    atom = atomLabels[2]  # remember, in Python we count from 0, so 3rd atom is 2nd in the structure
 		#    type = atomTypes[atom]
 		#    In this case atom will be set to "1", and type to "As"
 		#
