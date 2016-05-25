@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import numpy as np
 import fractions
@@ -7,9 +7,11 @@ import os
 import decimal as dc
 import sys
 import json
+import time
+
 
 #
-# Interface Builder 
+# Interface Builder
 # Author: Jakub Kaminski, UCLA 2014
 #
 
@@ -37,11 +39,11 @@ def readInput(inputFile):
 	line = file.readline()
 	line = line.split()
 	depMillerString = line[1]
-	
+
 	line = file.readline()
 	line = line.split()
 	maxArea = float(line[1])
-	
+
 	line = file.readline()
 	line = line.split()
 	areaThres = float(line[1])
@@ -132,11 +134,24 @@ def readInput(inputFile):
 	nVac = float(line[1])
 #	if nVac <= 1: nVac = 1
 
+	# Read checkPoliarity ratio
+	line = file.readline()
+	line = line.split()
+	tmp = line[1]
+	if tmp == "True":
+		checkPolar = True
+	elif tmp == "False":
+		checkPolar = False
+	else:
+		print "Value for check checkPolar not recognized"
+		exit()
+
+
 	return subCIF, subMillerString,\
 	       depCIF, depMillerString,\
 	       maxArea, areaThres, vecThres, angleThres,\
 	       capAtmS, capAtmD, fparam, nLS, nLD, nConf, subAtRad, depAtRad,\
-	       skipStep1, poissonRatio, sandwich, nVac 
+	       skipStep1, poissonRatio, sandwich, nVac, checkPolar
 
 def getMillerFromString(millerString):
 
@@ -149,16 +164,16 @@ def createMillerList(maxMillerInd):
         # create a list that contains strings for all the possible Miller indices
         # from "0 0 1" to "maxMillerInd maxMillerInd maxMillerInd"
 
-        MillerList = list() 
+        MillerList = list()
 
-	# If the length of maxMillerInd is 3 (i.e. 100, 111, 212) 
+	# If the length of maxMillerInd is 3 (i.e. 100, 111, 212)
 	# it means we are dealing with the indyvidual Miller orienation,
 	# hence don't generate it, just return it value packed in the list
 	if len(maxMillerInd) >= 3:
 		MillerList.append(maxMillerInd)
 		return MillerList
-	
-	# Generate all possible combinations up to specified Miller index 
+
+	# Generate all possible combinations up to specified Miller index
         x1 = 0
         x2 = 0
         x3 = 0
@@ -206,7 +221,7 @@ def ReadCIF(filename,atomTypes):
 	# Reads information from CIF file:
 	# - ICSD database code for the material
 	# - unit cell lengths and angles
-	# - evaluates xyz coordinates based on fractional coordinates and 
+	# - evaluates xyz coordinates based on fractional coordinates and
 	# symmetry position of unique atoms
 	# Returns:
 	# - ICSD database code for the material
@@ -309,7 +324,7 @@ def ReadCIF(filename,atomTypes):
 		try:
 			line = lines[ib]
 		except IndexError:
-			break # end of file reached 
+			break # end of file reached
 
 		# If file finishes with empty line
 		try:
@@ -324,7 +339,7 @@ def ReadCIF(filename,atomTypes):
 		else:
 			break
 
-	# Now, knowing fractional coordinates and the symmetry positions, 
+	# Now, knowing fractional coordinates and the symmetry positions,
 	# build fractional xyz coordinates.
 	# First we will put fractional coordinates into array fracoord
 
@@ -355,15 +370,15 @@ def ReadCIF(filename,atomTypes):
 	atoms = []# list to be fileld with atom indexes after symmetry operation
 	for atom in fracoord:
 		postmp = []
-		for pos in atompos: #For each element in atompos, convert it 
-			            # to fraction, multiply by fractional 
+		for pos in atompos: #For each element in atompos, convert it
+			            # to fraction, multiply by fractional
 				    # coordinate and save to positions array
 #			pos = pos.split()
 			pos = pos.split(",") # For group
 			coordtmp = []
 #			for elem in pos[1:]:
 			for elem in pos:     # For group
-				# Read symmetry operation and constuct 
+				# Read symmetry operation and constuct
 				# fractional coordiante
 
 				s,o = ReadSym(elem)
@@ -371,28 +386,28 @@ def ReadCIF(filename,atomTypes):
 				coord = s[0]*o[0]*atom[0] + \
 					s[1]*o[1]*atom[1] + \
 					s[2]*o[2]*atom[2] + \
-					s[3]*o[3]             
+					s[3]*o[3]
 
 				# Normalise to [0,1)
-				if coord < 0 : coord = 1+coord 
+				if coord < 0 : coord = 1+coord
 				if coord > 1 : coord = coord-1
 # WARNING
 				# Round to 4 digits to avoid rounding error
 # END WARNING
 				coord = round(coord,3)
 				coordtmp.append(coord)
-			#Find duplicates	
+			#Find duplicates
 			if coordtmp not in postmp:
 				postmp.append(coordtmp)
 				atoms.append(atomlabels[iatlab])
 
 		# If first atom or only one atom, create position array
 		if iatlab == 0:
-			positions = np.array(postmp)				
+			positions = np.array(postmp)
 		else: # add 2nd and other atoms to position array
 			tmp = np.array(postmp)
 			positions = np.vstack([positions,tmp])
-		
+
 	# Find and add 1 to every 0 in postmp. Add new coordiante to positions
 		for elem in postmp:
 			if elem[0] == 0:
@@ -532,7 +547,7 @@ def FracToCart(a,b,c,alpha,beta,gamma):
 	#        b1,b2,b3
 	#        c1,c2,c3]
 	mat = mat.T
-	
+
 	return mat
 
 def FracToCart2(a,b,c,alpha,beta,gamma):
@@ -573,18 +588,18 @@ def FracToCart2(a,b,c,alpha,beta,gamma):
 	mat[2,2] = m.sqrt((c**2)-cos2b-(c*(cosa-cosb*cosg)/sing)**2)
 
 	mat = CleanMatElements(mat)
-	
+
 	return mat
 
 
 
 def CleanMatElements(mat):
 
-	# Clean numeric mess in numpy array, by replacing really small 
+	# Clean numeric mess in numpy array, by replacing really small
 	# elements with 0
 	# For instance:
 	# input
-	# [  0.00000000e+00   5.43053000e+00   3.32524059e-16] 
+	# [  0.00000000e+00   5.43053000e+00   3.32524059e-16]
 	# output
 	# [  0.0   5.43053   0.0]
 
@@ -594,7 +609,7 @@ def CleanMatElements(mat):
 	return mat
 
 def ReadSym(string):
-	# Reads the _symmetry_equiv_pos_as_xyz operation in CIF 
+	# Reads the _symmetry_equiv_pos_as_xyz operation in CIF
 	# Assumes that general format is:
 	# 'x+y+z+int1/int2'
 	# Example: for 'x-y+1/2' it can be written in form of lists:
@@ -606,16 +621,16 @@ def ReadSym(string):
 	# operation[1]  -  1 if there is y symmetry operation, 0 otherwise
 	# operation[2]  -  1 if there is z symmetry operation, 0 otherwise
 	# operation[3]  -  1 if there is fraction, 0 otherwise
-	
-	signs = [1,1,1,1] 
+
+	signs = [1,1,1,1]
 	# signs[0] - 'x' sign, -1 means -x
 	# signs[1] - 'y' sign, -1 means -y
 	# signs[2] - 'z' sign, -1 means -z
 	# signs[3] - fraction sign, -1 means -fraction
-	
-	# Find x,y,z 
+
+	# Find x,y,z
 	idx = string.find("x")
-	if idx > -1: 
+	if idx > -1:
 		operation[0] = 1
 		# Find sign before x
 		if idx != 0: #check in the case fraction is first element
@@ -623,7 +638,7 @@ def ReadSym(string):
 				signs[0] = -1
 
 	idx = string.find("y")
-	if idx > -1: 
+	if idx > -1:
 		operation[1] = 1
 		# Find sign before x
 		if idx != 0: #check in the case fraction is first element
@@ -631,7 +646,7 @@ def ReadSym(string):
 				signs[1] = -1
 
 	idx = string.find("z")
-	if idx > -1: 
+	if idx > -1:
 		operation[2] = 1
 		# Find sign before x
 		if idx != 0: #check in the case fraction is first element
@@ -646,7 +661,7 @@ def ReadSym(string):
 		f2idx = idx+1
 		frac = float(string[f1idx])/float(string[f2idx])
 		operation[3] = frac
-		
+
 		# Find sign before fraction
 		if f1idx != 0: #check in the case fraction is first element
 			if string[f1idx-1] == '-':
@@ -655,23 +670,23 @@ def ReadSym(string):
 	return signs,operation
 
 def ReadSymFrac(string):
-	# This is specyfic routine for CIF file, to transform symmetry 
+	# This is specyfic routine for CIF file, to transform symmetry
 	# equivalent position to actual true numbers.
 	# Works for the cases when the symmetry operation is of the forms:
 	# "x", "-x", "x+1/2", "-z+3/4"...
 
-	# There can be only two operation op1*x+op2*ratio, where 
+	# There can be only two operation op1*x+op2*ratio, where
 	# op1 and op2 = "+" or "-". Define op list as two "+" operations
-	# 
+	#
 	# Input:
 	# - string - symmetry operation as from CIF file, eg. "x+1/2"
 	# Output:
-	# - coordid - number for coordinate in symmetry operation: 
+	# - coordid - number for coordinate in symmetry operation:
 	#             'x'=0, 'y'=1, 'z'=2
 	# - op - signs in symmetry operation, e.g:
 	#        "x+1/2" : op=[1,1]
 	#        "-x+1/2": op=[-1,1]
-	# 	 "-x-1/2": op=[-1,-1] 
+	# 	 "-x-1/2": op=[-1,-1]
 	#        "-x"    : op=[-1,1] ....
 	# - digits - the digits in the fraction, e.g.:
 	#        "1/4" : digits=[1,4]
@@ -681,7 +696,7 @@ def ReadSymFrac(string):
 
 	op = [1,1]
 
-	# There can be two digits defining ratio, e.g. 1/4. 
+	# There can be two digits defining ratio, e.g. 1/4.
 	# Define digits list with two "0,1" for the start
 
 	digits = [0,1]
@@ -695,23 +710,23 @@ def ReadSymFrac(string):
 		if coorindex == -1:
 			coorindex = string.find("z")
 			coordid = 2
-	
-	# Check if the coordinate is not negative 
+
+	# Check if the coordinate is not negative
 	# and mark it by -1 in op variable
 	if coorindex > 0: # just in case to be sure we are not accessing beyond
 		          # string length
 		optype = string[coorindex-1]
 		if optype == "-":
 			op[0] = -1
-	
+
 	# Check if we add or substract ratio.
 	# If we add, op[1]=1, if we substract op[1]=-1
 	if coorindex <len(string): # just in case to be sure we are not accesing
-		                   # beyond string length 
+		                   # beyond string length
 		optype = string[coorindex+1]
 		if optype == "-":
 			op[1] = -1
-	
+
 
 	# Now read the ratio
 	# Find digit by digit and save them to digit index
@@ -720,16 +735,16 @@ def ReadSymFrac(string):
 		if i.isdigit():
 			digits[digitindex] = float(i)
 			digitindex = digitindex + 1
-	
+
 	return coordid, op, digits
 
 
 def CheckParentheses(input):
-	# In some CIF file the cell dimensions and anglesare given with 
-	# standard deviation in final digits. It is usally the last 
-	# number given in parentheses. 
+	# In some CIF file the cell dimensions and anglesare given with
+	# standard deviation in final digits. It is usally the last
+	# number given in parentheses.
 
-	# CheckParentheses checks is string read from CIF has paretheses and 
+	# CheckParentheses checks is string read from CIF has paretheses and
 	# disregards them.
 	#
 	# Variables:
@@ -770,15 +785,15 @@ def extractSpaceGroup(symbol):
 	# In ISCD "S" or ":S" extension on the end of the symbol is equivalent
 	# to :1 notation for origin choice for space groups with two origins,
 	# .i.e "F d -3 m S"
-	# Our notoations follows :1 :2 extension for different origins and 
+	# Our notoations follows :1 :2 extension for different origins and
 	# :R :H for different axes, so convert everything to this notation
 
-	if symbolOut[-1] == "s": 
+	if symbolOut[-1] == "s":
 		symbolOut = symbolOut[:-1] +":1"
-	
-	if symbolOut[-2:] == ":s": 
+
+	if symbolOut[-2:] == ":s":
 		symbolOut = symbolOut[:-2] +":1"
-	
+
 	# Intel is using follwing convetion in their MadeA software to
 	# label group with different origins
 	# FD-3MO1 - origin 1; FD-3MO2 - origin 2
@@ -816,7 +831,7 @@ def unique2(a,labels):
 def fneigh(point,setp):
 
 	# Find of nearest neighbours of the "point" in the "setp" of points
-	# 
+	#
 	# Return array of the shape, where
 	# - 1st column is the distance of "point" to point p in "setp"
 	# - 2nd column is the index of point p in "setp"
@@ -833,7 +848,7 @@ def fneigh(point,setp):
 	neigh = neigh[np.argsort(neigh[:,0])]
 
 	neigh = CleanMatElements(neigh)
-	
+
 	return neigh
 
 class Surface:
@@ -848,11 +863,11 @@ class Surface:
 		self.u = np.array((0,0,0))
 		self.v = np.array((0,0,0))
 		self.n = np.array((0,0,0))
-		self.origin = np.array((0,0,0)) 
+		self.origin = np.array((0,0,0))
 		self.a = np.array((0,0,0)) # primitive vector
 		self.b = np.array((0,0,0)) # primitive vector
 
-		self.unitcell = self.positions.copy() # save unit cell 
+		self.unitcell = self.positions.copy() # save unit cell
 		self.unitcellatoms = atoms # save unit cell atom labels
 		self.atomTyp = atomTyp
 		self.primarea = 0 # area of the primitive cell
@@ -863,7 +878,7 @@ class Surface:
 		self.planepos = np.array([[]])#empty array for surface positions
 		self.planeatms = [] # empty list for plane atom labels
 
-		self.planeposblk = np.array([[]])# empty array for surface 
+		self.planeposblk = np.array([[]])# empty array for surface
 			         		 # positions and atoms below
 		self.planeatmsblk = [] # empty list for plane atom labels
 		                       # and atome below
@@ -874,9 +889,9 @@ class Surface:
 	def __removeperiodic3D(self,pos,vec1,vec2,vec3):
 
 		# Find the atoms in the superlattice that are
-		# translations of the other atoms 
+		# translations of the other atoms
 
-		# Rude and not effecient solution 
+		# Rude and not effecient solution
 		# Try more through array interception
 
 		r = range(2)
@@ -893,7 +908,7 @@ class Surface:
 							poscheck = np.vstack\
 							          ([poscheck,tmp])
 
-		# Find indicies of unique elements in pos array that 
+		# Find indicies of unique elements in pos array that
 		# are not there is poscheck array
 		ii = 0
 		for i in pos:
@@ -913,10 +928,10 @@ class Surface:
 		return uniqlist
 
         def bulkNEW(self,ncells):
-                # 
-                # OLD ROUTINE TO CONSTRUCT BULK MATERIAL USING 
+                #
+                # OLD ROUTINE TO CONSTRUCT BULK MATERIAL USING
                 # __UNIQUE ROUTINE TO FIND DUPLICATE ELEMENTS.
-                # THE PROBLEM WAS THAT IT DID NOT KEEP THE ORDER 
+                # THE PROBLEM WAS THAT IT DID NOT KEEP THE ORDER
                 # OF THE POSITION ARRAY
                 # Consruct bulk surface from "ncells x unit cell"
                 #
@@ -924,7 +939,7 @@ class Surface:
 
                 r = range(-ncells,ncells+1)
 
-                # Initial cooridnates and labels 
+                # Initial cooridnates and labels
                 posout = self.unitcell.copy()
 
                 # Make unit cell periodic
@@ -945,9 +960,9 @@ class Surface:
                         closeR = r[middle-2:middle+3]
                 else:
                         closeR = r
-                # Generate the middle of the bulk first. This is usefull in the later parts of the code to 
-                # limit the size of the bulk to small number of atoms, for instance to look for nearest 
-                # neighbors 
+                # Generate the middle of the bulk first. This is usefull in the later parts of the code to
+                # limit the size of the bulk to small number of atoms, for instance to look for nearest
+                # neighbors
                 i = nAtoms
                 for x in closeR:
                         for y in closeR:
@@ -986,18 +1001,18 @@ class Surface:
                 self.atomsSmall = newlabels[0:idxMiddle]
 
 	def bulk(self,ncells):
-		# 
-		# OLD ROUTINE TO CONSTRUCT BULK MATERIAL USING 
+		#
+		# OLD ROUTINE TO CONSTRUCT BULK MATERIAL USING
 		# __UNIQUE ROUTINE TO FIND DUPLICATE ELEMENTS.
-		# THE PROBLEM WAS THAT IT DID NOT KEEP THE ORDER 
+		# THE PROBLEM WAS THAT IT DID NOT KEEP THE ORDER
 		# OF THE POSITION ARRAY
 		# Consruct bulk surface from "ncells x unit cell"
 		#
 		# The results is saved in the positions variable
 
 		r = range(-ncells,ncells+1)
-		
-		# Initial cooridnates and labels 
+
+		# Initial cooridnates and labels
 		posout = self.unitcell.copy()
 		newlabels = self.__addatoms([])
 
@@ -1028,8 +1043,8 @@ class Surface:
 		# The results is saved in the positions variable
 
 		r = range(-ncells,ncells+1)
-		
-		# Initial cooridnates and labels 
+
+		# Initial cooridnates and labels
 		posout = self.unitcell.copy()
 		newlabels = self.__addatoms([])
 
@@ -1049,7 +1064,7 @@ class Surface:
 
 		self.positions = posout
 		self.atoms = newlabels
-		
+
 	def __addatoms(self, newlabels):
 		# Add unit cell atoms labels to atom label list
 		for i in range(len(self.unitcellatoms)):
@@ -1088,16 +1103,16 @@ class Surface:
 				out = np.vstack([out,elem1])
 				labels.append(self.unitcellatoms[ii])
 			ii += 1
-			
+
 
 		return out,labels
 
 	def __unique(self,a,labels):
 
 		# Check the numpy array with coordiantes for duplicate entries
-		# Remove duplicates, remove lables correspoding to duplicated 
-		# coordinates. 
-		# The returned coordiantes are sorted in different order than 
+		# Remove duplicates, remove lables correspoding to duplicated
+		# coordinates.
+		# The returned coordiantes are sorted in different order than
 		# orginals
 		#
 		# Subroutine take from:
@@ -1109,7 +1124,7 @@ class Surface:
 		a = a[order]
 		diff = np.diff(a, axis=0)
 		ui = np.ones(len(a), 'bool')
-		ui[1:] = (diff != 0).any(axis=1) 
+		ui[1:] = (diff != 0).any(axis=1)
 
 		ii = 0
 		newlabels = []
@@ -1137,7 +1152,7 @@ class Surface:
 			# (010) surfae
 			self.u = self.A.copy()
 			self.v = self.C.copy()
-			
+
 			# We take abs(k) as (0-10) will be same as (010)
 			self.origin = (1.0/abs(k)) * self.B
 
@@ -1156,7 +1171,7 @@ class Surface:
 			if h < 0 and k < 0:
 				h *= -1
 				k *= -1
-			
+
 			self.u = (1./h)*self.A - (1./k)*self.B
 			self.v = self.C.copy()
 
@@ -1259,13 +1274,13 @@ class Surface:
 
 
 	def plane(self):
-		
+
 		# Cut the plane from the postitions
-		
+
 		# Define normal to the plane
 		self.n = normal(self.u,self.v)
 
-		# Shift the orgin of the unit cell so it 
+		# Shift the orgin of the unit cell so it
 		# corresponds to the plane vectors
 		self.positions = self.positions - self.origin
 
@@ -1282,18 +1297,18 @@ class Surface:
 
 		z = np.array((0,0,1))
 		normZ = 1 # norm of Z
-		
+
 		cosphi = np.dot(self.n,z)/(normN*normZ)
 		phi = m.acos(cosphi)
 
 		phi = phi * 180/m.pi
-		
-		# Create diagonal rotation matrix 
+
+		# Create diagonal rotation matrix
 		R = np.diag((1.0,1.0,1.0))
 
 		if phi != 0: # angle 0 gives problems with NaN in R matrix,
 			     # but we dont need it anyways in this case
-			phi = 180 - phi # Rotation is counterclockwise, 
+			phi = 180 - phi # Rotation is counterclockwise,
 			                #so define angle as 180 - phi
 			phi = phi * m.pi/180
 
@@ -1303,17 +1318,17 @@ class Surface:
 			rv = np.cross(self.n, z) # rotation vector
 			normrv = np.linalg.norm(rv)
 			rv = rv/normrv
-			
+
 			# now define rotation matrix
 #			R = np.zeros((3,3))
 			R[0,0] = cosphi + (rv[0]**2)*(1-cosphi)
 			R[0,1] = rv[0]*rv[1]*(1-cosphi) - rv[2]*sinphi
 			R[0,2] = rv[0]*rv[2]*(1-cosphi) + rv[1]*sinphi
-	
+
 			R[1,0] = rv[1]*rv[0]*(1-cosphi) + rv[2]*sinphi
 			R[1,1] = cosphi + (rv[1]**2)*(1-cosphi)
 			R[1,2] = rv[1]*rv[2]*(1-cosphi)-rv[0]*sinphi
-	
+
 			R[2,0] = rv[2]*rv[0]*(1-cosphi) - rv[1]*sinphi
 			R[2,1] = rv[2]*rv[1]*(1-cosphi) + rv[0]*sinphi
 			R[2,2] = cosphi + (rv[2]**2)*(1-cosphi)
@@ -1350,23 +1365,23 @@ class Surface:
 			# Find all atoms lying above the plane
 			idxabove = posrot[:,2]>0
 			posabove = posrot[idxabove]
-	
+
 			# Labels of atoms on surface only
 			self.planeatms = self.atoms[idxlist]
 
 			uqatoms,uqidx,uqidxbulk = self.__finduqatomsCENTER(self.planeatms,\
 					                   posrot,idxlist)
-				
+
 			# Find anticipatory vectors for each unique atom on the plane
 			avecslist = []
 			for idx in uqidxbulk:
 				avecsitem = self.__anticipatoryvecs\
    					     (posrot[idx],posabove)
 				avecslist.append(avecsitem)
-	
+
 			self.avecs = avecslist[0]
 			# Create a dictionary avecall to hold all anticipatory
-			# vectors assiciated to given atom type. This will be 
+			# vectors assiciated to given atom type. This will be
 			# usefull for scoring function
 			self.avecsall = {}
 			for i in range(len(uqatoms)):
@@ -1377,17 +1392,17 @@ class Surface:
 
 		#	self.avecs = self.__anticipatoryvecs(posrot[idxlist[0]],\
 		#			                     posabove)
-	
+
 			# Find the nearest neighbours of the atom in bulk
 	#		self.nneigh = self.__anticipatoryvecs(posrot[0],\
 #		   			    posrot[1:],neighonly=True)
-	
-			# Find nearest unique atoms in the whole bulk 
+
+			# Find nearest unique atoms in the whole bulk
 			# This is needed to find nearest neigbours of each atom type
 			uqatoms,uqidx,uqidxbulk = self.__finduqatomsCENTER(self.atomsSmall,\
 					                   self.positionsSmall,\
 							   idxlist=range(len(self.positionsSmall)))
-	
+
 			neighlist = []
                         for i in uqidxbulk:
                                 # Construct array with poistion without atom i
@@ -1398,8 +1413,8 @@ class Surface:
                                                     postmp,neighonly=True)
                                 neighlist.append(nneighat)
 
-			# Create dictionary that as a key will have label 
-			# of unique atom and as value, number of its nearest 
+			# Create dictionary that as a key will have label
+			# of unique atom and as value, number of its nearest
 			# neighbors
 			self.uqneigh = {}
 			for i in range(len(uqatoms)):
@@ -1407,10 +1422,10 @@ class Surface:
 				ii = neighlist[i]
 				self.uqneigh[lab]=ii
 			self.nneigh = neighlist[0]
-			
+
 			# Revert to orginal origin of atom coordinates
 			self.positions = self.positions + self.origin
-	
+
 			# Create surface coordinates
 			self.planepos = posrot[idxlist]
 
@@ -1419,11 +1434,11 @@ class Surface:
 			#idxlistblk = idxlist + idxlistblk
 			idxlistblk = np.concatenate((idxlist,idxlistblk))
 			self.planeposblk = posrot[idxlistblk]
-	
+
 			# Labels of atoms on surface and below
                         self.planeatmsblk = self.atoms[idxlistblk]
-	
-			# Translate plane so coordinate z=0	
+
+			# Translate plane so coordinate z=0
 #			if abs(self.planepos[:,2]).all > 0:
 #				self.planepos[:,2] -= self.planepos[:,2]
 
@@ -1439,7 +1454,7 @@ class Surface:
 		uqi = [] # index of representative atom on surface
 		uqibulk = [] # index of representative atom in bulk structure
 
-		postmp = pos[idxlist]	
+		postmp = pos[idxlist]
 		for i in range(len(postmp)):
 			atom = labels[i]
 			if atom not in uql:
@@ -1457,16 +1472,16 @@ class Surface:
 		# Return atom labels, and index of the atom on the plane
 		# and index of atoms in the bulk structureq
 		#
-		# Modified version of __finduqatoms to take atom in the center 
+		# Modified version of __finduqatoms to take atom in the center
 		# as the base to look
 
 		uql = [] # unique labels
 		uqi = [] # index of representative atom on surface
 		uqibulk = [] # index of representative atom in bulk structure
 
-		postmp = pos[idxlist]	
+		postmp = pos[idxlist]
 
-                # Find centroid 
+                # Find centroid
                 cX = sum(postmp[:,0])/len(postmp[:,0])
                 cY = sum(postmp[:,1])/len(postmp[:,1])
                 cZ = sum(postmp[:,2])/len(postmp[:,2])
@@ -1487,10 +1502,10 @@ class Surface:
 
 	def __anticipatoryvecs(self,atom,bulk,neighonly=False):
 		# Routine to find anticipatory vectors for atom
-		# by looking through it nearest neighbours 
+		# by looking through it nearest neighbours
 
 		# Find nearest neighbours of the atom
-		# Construct array with the distance and indices of atoms in 
+		# Construct array with the distance and indices of atoms in
 		# bulk
 		# Introcude threshold to find number neartest neighbours
 		# There are cases where atoms has N nearest neighbours, but
@@ -1511,14 +1526,14 @@ class Surface:
 		neigh = neigh[np.argsort(neigh[:,0])]
 
 		# To avoid small differences in floating point comparisons
-		# substract first elements from all others and round the 
+		# substract first elements from all others and round the
 		# result to 12 decimal place
 		shift = neigh[0,0].copy()
-#		neigh[:,0] -= neigh[0,0] 
+#		neigh[:,0] -= neigh[0,0]
 		neigh[:,0] -= shift
 
 		neigh = CleanMatElements(neigh)
-		
+
 		# Select only atoms with the shortest distance
 		#idx = neigh[:,0] == neigh[0,0]
 		#idx = neigh[:,0] == 0.0
@@ -1531,7 +1546,7 @@ class Surface:
 		# Find the coordinates of nearest neighbours in bulk
 		idxs = neigh[:,1].astype(int)
 		avecs = bulk[idxs]
-		
+
 		# Shift avecs to origin of coordinate system
 		avecs = avecs - atom
 		avecs = CleanMatElements(avecs)
@@ -1540,7 +1555,7 @@ class Surface:
 		# see if they are quivalent. If yes, remove the duplicates
 		# The vectors are  assumed to be equivalent if the angle
 		# between vectors and z-axis is the same
-		
+
 #		if len(avecs) > 1:
 #			z = np.array((0,0,1))
 #			nz = 1
@@ -1561,9 +1576,9 @@ class Surface:
 	def initpvec(self):
 		# Initialize primitive vecotrs
 		# Algorithm:
-		# Take first atom in the surface, calculate its nearest 
-		# neighbours, and define primitive vectors as the 
-		# vectors pointing to the nearest two atoms. 
+		# Take first atom in the surface, calculate its nearest
+		# neighbours, and define primitive vectors as the
+		# vectors pointing to the nearest two atoms.
 
 		# Shift coordinates so that 1st atom is in origin
 		orgsave = self.planepos[0]
@@ -1571,10 +1586,10 @@ class Surface:
 
 		# Find all the nearest neighbours from atom 0
 		distmat = np.sum(np.abs(self.planepos)**2,axis=1)**(1./2)
-		# Sort distmat. 
+		# Sort distmat.
 		idx = distmat.argsort()
 
-		# Find two non-linear vectors. They will be initial 
+		# Find two non-linear vectors. They will be initial
 		# primitive vectors
 		# It is most likely to be fist two smallest vectors,
 		# but check for linearity just in case
@@ -1620,28 +1635,28 @@ class Surface:
 		print "REDUCED VECTORS"
 		print "A", self.a, np.linalg.norm(self.a)
 		print "B", self.b, np.linalg.norm(self.b)
-		
-		# Shift coordinates back to orginals positions 
+
+		# Shift coordinates back to orginals positions
 		self.planepos += orgsave
 
 	def initpvecNEW(self):
 		# Initialize primitive vecotrs
 		# Algorithm:
-		# Take first atom in the surface, calculate its nearest 
-		# neighbours, and define primitive vectors as the 
-		# vectors pointing to the nearest two atoms. 
+		# Take first atom in the surface, calculate its nearest
+		# neighbours, and define primitive vectors as the
+		# vectors pointing to the nearest two atoms.
 
 		# Algortihm used:
 		# Check two conditions:
-		# 1) If lattice constant for given plane can be expresed 
+		# 1) If lattice constant for given plane can be expresed
 		#    in term of intiger multiplications of primitive vector:
 		#        n*|a| = |u| , n=1,2,3,....
-		# 2) If length of the scalar projection of the primitive 
+		# 2) If length of the scalar projection of the primitive
 		#    vector on the lattice vector is equal to 0.5*(|u|**2)
 		#    This can be shown from the properties of dot product:
 		#   dot(a,u) == 0.5*(|u|**2) when a_u = |a|*cos(phi) == 0.5*|u|
 		#
-		#   If any of those conditions is met, the pair of vectors 
+		#   If any of those conditions is met, the pair of vectors
 		#   are the primitive vectors for this lattice
 
 		# Primitive vectors not found yet
@@ -1653,11 +1668,11 @@ class Surface:
 
 		# Find all the nearest neighbours from atom 0
 		distmat = np.sum(np.abs(self.planepos)**2,axis=1)**(1./2)
-		# Sort distmat. 
+		# Sort distmat.
 		idx = distmat.argsort()
 
 
-		# Find two non-linear vectors. They will be initial 
+		# Find two non-linear vectors. They will be initial
 		# primitive vectors
 		# It is most likely to be fist two smallest vectors,
 		# but check for linearity just in case
@@ -1675,20 +1690,20 @@ class Surface:
 			# between atoms of the same type.
 			if self.planeatms[idx[i]] == self.planeatms[0]:
 				self.a = self.planepos[idx[i]].copy()
-	
+
 				na = np.linalg.norm(self.a)
-	
+
 				# 1st condtition
 				if nu >= na:
 					ma = nu%na
 				else:
 					ma = na%nu
-	
+
 				if round(ma,6) == 0.0: primitive = True
-	
+
 				# 2nd condition
 				dau = np.dot(self.a,self.u)
-	
+
 				if round(abs(dau),5) == round((nu**2)/2,5): primitive = True
 
 				if primitive: break
@@ -1704,22 +1719,22 @@ class Surface:
 			# between atoms of the same type.
 			if self.planeatms[idx[i]] == self.planeatms[0]:
 				self.b = self.planepos[idx[i]].copy()
-	
+
 				nb = np.linalg.norm(self.b)
-	
+
 				# 1st condtition
 				if nv >= nb:
 					mb = nv%nb
 				else:
 					mb = nb%nv
-	
+
 				if round(mb,6) == 0.0 : primitive = True
-	
+
 				# 2nd condition
 				dbv = np.dot(self.b,self.v)
-				
+
 				if round(abs(dbv),5) == round((nv**2)/2,5): primitive = True
-	
+
 				# Check if vector b is not linear with vector a
 				if primitive:
 					check = np.cross(self.a,self.b)
@@ -1731,7 +1746,7 @@ class Surface:
 						       (self.norma*self.normb)
 					if np.linalg.norm(check) != 0:
 						linear = False
-	
+
 				if primitive and (not linear): break
 			i += 1
 
@@ -1746,28 +1761,28 @@ class Surface:
 #                print "REDUCED VECTORS"
 #                print "A", self.a, np.linalg.norm(self.a)
 #                print "B", self.b, np.linalg.norm(self.b)
-		
-		# Shift coordinates back to orginals positions 
+
+		# Shift coordinates back to orginals positions
 		self.planepos += orgsave
 
 	def initpvecNEW2(self):
 		# Initialize primitive vecotrs
 		# Algorithm:
-		# Take first atom in the surface, calculate its nearest 
-		# neighbours, and define primitive vectors as the 
-		# vectors pointing to the nearest two atoms. 
+		# Take first atom in the surface, calculate its nearest
+		# neighbours, and define primitive vectors as the
+		# vectors pointing to the nearest two atoms.
 
 		# Algortihm used:
 		# Check two conditions:
-		# 1) If lattice constant for given plane can be expresed 
+		# 1) If lattice constant for given plane can be expresed
 		#    in term of intiger multiplications of primitive vector:
 		#        n*|a| = |u| , n=1,2,3,....
-		# 2) If length of the scalar projection of the primitive 
+		# 2) If length of the scalar projection of the primitive
 		#    vector on the lattice vector is equal to 0.5*(|u|**2)
 		#    This can be shown from the properties of dot product:
 		#   dot(a,u) == 0.5*(|u|**2) when a_u = |a|*cos(phi) == 0.5*|u|
 		#
-		#   If any of those conditions is met, the pair of vectors 
+		#   If any of those conditions is met, the pair of vectors
 		#   are the primitive vectors for this lattice
 
 		# Primitive vectors not found yet
@@ -1779,10 +1794,10 @@ class Surface:
 
 		# Find all the nearest neighbours from atom 0
 		distmat = np.sum(np.abs(self.planepos)**2,axis=1)**(1./2)
-		# Sort distmat. 
+		# Sort distmat.
 		idx = distmat.argsort()
 
-		# Find two non-linear vectors. They will be initial 
+		# Find two non-linear vectors. They will be initial
 		# primitive vectors
 		# It is most likely to be fist two smallest vectors,
 		# but check for linearity just in case
@@ -1800,17 +1815,17 @@ class Surface:
 			# between atoms of the same type.
 			if self.planeatms[idx[i]] == self.planeatms[0]:
 				self.a = self.planepos[idx[i]].copy()
-	
+
 				na = np.linalg.norm(self.a)
-	
+
 				# 1st condtition
 				if nu >= na:
 					ma = nu%na
 				else:
 					ma = na%nu
-	
+
 				if round(ma,6) == 0.0: primitive = True
-	
+
 		#		# 2nd condition
 		#		dau = np.dot(self.a,self.u)
 		#		print "2nd condition:",round(abs(dau),5),round((nu**2)/2,5)
@@ -1838,20 +1853,20 @@ class Surface:
 			# between atoms of the same type.
 			if self.planeatms[idx[i]] == self.planeatms[0]:
 				self.b = self.planepos[idx[i]].copy()
-	
+
 				nb = np.linalg.norm(self.b)
-	
+
 				# 1st condtition
 				if nv >= nb:
 					mb = nv%nb
 				else:
 					mb = nb%nv
-	
+
 				if round(mb,6) == 0.0 : primitive = True
-	
+
 				# 2nd condition
 		#		dbv = np.dot(self.b,self.v)
-		#		
+		#
 		#		if round(abs(dbv),5) == round((nv**2)/2,5): primitive = True
 		#
 				# 3rd condition u and a are colinear
@@ -1874,22 +1889,22 @@ class Surface:
 						       (self.norma*self.normb)
 					if np.linalg.norm(check) != 0:
 						linear = False
-	
+
 				if primitive and (not linear): break
 
 			i += 1
-		
+
 		if primitive:
 			self.exists = True
 
 			# Reduce a and b
 			self.a, self.b = reduction(self.a, self.b)
 
-		# Shift coordinates back to orginals positions 
+		# Shift coordinates back to orginals positions
 		self.planepos += orgsave
 
 	def primitivecell(self):
-		# Calculate the norm of primitive vectors a,b , 
+		# Calculate the norm of primitive vectors a,b ,
 		# angle between them and the area of primitive cell
 
 		self.norma=np.linalg.norm(self.a)
@@ -1908,8 +1923,8 @@ def normal(vec1,vec2):
 		return result
 
 def rotmat2d(phi):
-	# Calculate clockwise rotation matrix around z-axis 
-	# 
+	# Calculate clockwise rotation matrix around z-axis
+	#
 	# phi - input angle, in radians
 
 	mat = np.zeros((2,2))
@@ -1922,7 +1937,7 @@ def rotmat2d(phi):
 	return mat
 
 
-#CONTINUED FRACTIONS CODE		
+#CONTINUED FRACTIONS CODE
 # source:
 # http://tech.groups.yahoo.com/group/tuning-math/message/14958
 def contfrac(a): ### continued fraction expansion
@@ -1982,7 +1997,7 @@ def AreaMatch(A1, A2, threshold, maxarea):
 	# Use continued fraction algorithm
 	p,q = ra(ratio)
 
-	# Prepare output lists	
+	# Prepare output lists
 	pout = []
 	qout = []
 
@@ -2011,18 +2026,18 @@ def AreaMatch2(area1,area2,maxarea,threshold):
 	# area2 - area of primitive cell of material2
 	# threshold - threshold for are misfit (in %)
 	# maxarea - maximum size of p*A1 or q*A2 (in Angstrom)
-	# 
+	#
 	# Generate all the p and q, where
 	#
 	#   pA1 = qA2   (A1 - area1, A2 - area2)
 	#
-	# that give pA1 and qA2 that  is smaller than maxarea. 
+	# that give pA1 and qA2 that  is smaller than maxarea.
 	# Return only those  p and q that pA1/qA <= threshold
-		
+
 	p = []
 	q = []
-	
-	i = 1 
+
+	i = 1
 	threshold = threshold/100.0
 	while i*area1 <maxarea:
 		j = 1
@@ -2036,7 +2051,7 @@ def AreaMatch2(area1,area2,maxarea,threshold):
 		#		print i,j,abs(pq)
 			j += 1
 		i += 1
-		
+
 	return p,q
 
 def reduction(a,b):
@@ -2070,11 +2085,11 @@ def reduction(a,b):
 					b = b - a
 			else:
 				b = b + a
-		else: 
+		else:
 			tmp = a
 			a = b
 			b = tmp
-	
+
 	return a,b
 
 
@@ -2120,11 +2135,11 @@ def Superlattice(a,b,n):
 			pair = np.array((tmp1,tmp2))
 
 			results.append(pair)
-	
+
 	return results
 
 def SuperlatticeMatch(vecset1, vecset2, vecthresh, anglethresh):
-	# Check if two supperlattices matches by comapring their 
+	# Check if two supperlattices matches by comapring their
 	# vectors and angle between them
 
 	# vecset1 - [2,3] array with set of vectors of lattice1
@@ -2166,7 +2181,7 @@ def SuperlatticeMatch(vecset1, vecset2, vecthresh, anglethresh):
 	if umisfit <  vecthresh and  vmisfit < vecthresh \
 			and anglemisfit <  anglethresh:
 		fit = True
-	
+
 	return fit, normu1, normv1, phiuv1, normu2, normv2, phiuv2
 
 
@@ -2184,13 +2199,13 @@ def SuperlatticeParams(vecset):
 	sinphi = m.sqrt(1-cosphi**2)
 	phiuv = m.acos(cosphi)*180/m.pi
 	area = normu*normv*sinphi
-	
+
 	return normu, normv, phiuv, area
 
 def CheckListDuplicates(inlist, elem, in1, in2, in3, in4, in5, in6):
 
-	# Check if floating point elements of list elem with indicies 
-	# in1, in2, in3 are already in the in the list of listst inlist 
+	# Check if floating point elements of list elem with indicies
+	# in1, in2, in3 are already in the in the list of listst inlist
 
 	duplicate = False
 	for i in inlist:
@@ -2206,15 +2221,89 @@ def CheckListDuplicates(inlist, elem, in1, in2, in3, in4, in5, in6):
 	return duplicate
 
 
+def compute_min_dist(vec_v, vec_a, vec_b):
+    # algorithm provided by Craig Schroeder
+    # return: best_dist, best_x, best_y
+    a = vec_a[0]*vec_a[0]+ vec_a[1]*vec_a[1];
+    c = vec_b[0]*vec_b[0] + vec_b[1]*vec_b[1];
+    swp = False;
+    if a < c:
+        temp = vec_a;
+        vec_a = vec_b;
+        vec_b = temp;
+        temp = a;
+        a=c;
+        c=temp;
+        swp = True;
+
+    f = vec_v[0]*vec_v[0] + vec_v[1]*vec_v[1];
+    b = 2 * (vec_a[0]*vec_b[0] + vec_a[1]*vec_b[1]);
+    d = 2* (vec_a[0]* vec_v[0] + vec_a[1]*vec_v[1]);
+    e  = 2* (vec_b[0]* vec_v[0]+ vec_b[1]*vec_v[1]);
+    x_c = (b*e-2*c*d)/(-b*b+4*c*a);
+    x0 = np.round(x_c);
+    best_x=x0;
+    y0 = np.floor((b*x0+e)/(-2.*c));
+    y1 = y0+1;
+    f0 = a*x0*x0 + b*x0*y0 + c*y0*y0 + d*x0 + e*y0 + f;
+    f1 = a*x0*x0 + b*x0*y1 + c*y1*y1 + d*x0 + e*y1 + f;
+    if f0<f1:
+        best_y = y0;
+        best_dist = f0;
+    else:
+        best_y = y1;
+        best_dist = f1;
+
+    C=4*a*c-b*b;
+    D=4*d*c-2*b*e;
+    A=C*x0*x0+D*x0-e*e+4*f*c;
+    B=2*C*x0+D;
+
+    j=1;
+    while A+B*j+C*j*j<=4*best_dist*c:
+        y0=np.floor((b*(x0+j)+e)/(-2*c));
+        y1=y0+1;
+        if(2*c*y0+b*x0+b*j+e+c>0):
+            y1=y0;
+        f1=a*(x0+j)*(x0+j) + b*(x0+j)*y1 + c*y1*y1 + d*(x0+j) + e*y1 + f;
+        if f1 < best_dist:
+            best_dist = f1;
+            best_y = y1;
+            best_x = x0+j;
+        j = j+1;
+
+
+    j= 1;
+    while A-B*j+C*j*j<=4*best_dist*c:
+        y0=np.floor((b*(x0-j)+e)/(-2.*c));
+        y1=y0+1;
+        if(2*c*y0+b*x0-b*j+e+c>0):
+             y1=y0
+        f1=a*(x0-j)*(x0-j) + b*(x0-j)*y1 + c*y1*y1 + d*(x0-j) + e*y1 + f;
+        if(f1 < best_dist):
+            best_dist = f1;
+            best_y = y1;
+            best_x = x0-j;
+        j = j+1;
+    if swp:
+        temp = best_x;
+        best_x = best_y;
+        best_y = temp;
+
+    # return best_dist, best_x, best_y
+    return best_dist
+
+
+
 class Interface:
 	def __init__(self,vecDep,vecSub,Deposit,Substrate,vecpair,bfrac,wbond,\
 	    	     atomicRadius, nLS, nLD, capAtD, capAtS, sandwich, genHD=True,genHS=True,\
-		     poissonRatio=True):
+		     poissonRatio=True, checkPolar=True):
 
 		# Deposit surface and atoms below it
 		posDepBlk = Deposit.planeposblk.copy()
 		# Substrate surface and atoms below it
-		posSubBlk = Substrate.planeposblk.copy() 
+		posSubBlk = Substrate.planeposblk.copy()
 		# Deposit atom labels
 		DepAtomsBlk = Deposit.planeatmsblk
 		# Substrate atom labels
@@ -2224,7 +2313,7 @@ class Interface:
 		# Number of nearest neigbors of the atom in the bulk of Depoit
 		DepNneigh = Deposit.nneigh
 		#Number of nearest neigbors of the atom in the bulk of Substrate
-		SubNneigh = Substrate.nneigh	
+		SubNneigh = Substrate.nneigh
 
 		DepNneighuq = Deposit.uqneigh
 		SubNneighuq = Substrate.uqneigh
@@ -2232,7 +2321,7 @@ class Interface:
 		self.vecDep = vecDep.copy() # vectors of defining deposit surface
 		self.vecSub = vecSub.copy() # vectors defining substrate surface
 		self.Depavecs = Deposit.avecs.copy() # Deposit anticipatory vectors
-		self.Subavecs = Substrate.avecs.copy() # Substrate anticipatory vectors	
+		self.Subavecs = Substrate.avecs.copy() # Substrate anticipatory vectors
 		# Dictionary with vectors for all the atom types
 		self.Depavecsall = Deposit.avecsall.copy()
 		self.Subavecsall = Substrate.avecsall.copy()
@@ -2287,19 +2376,34 @@ class Interface:
 		DepTermPos, DepTermAtm, DepTermID =  self.__diffTerminations(DSurfPosScale, DSurfAtm)
 		SubTermPos, SubTermAtm, SubTermID =  self.__diffTerminations(SSurfPos, SSurfAtm)
 
-		# For simplicity of implementation, we will do checkPolar subroutine to work on single element of {sub,dep}TermPos matrices 
+		# For simplicity of implementation, we will do checkPolar subroutine to work on single element of {sub,dep}TermPos matrices
 		# at the time, and gather the results in {sub,dep}Polar and {sub,dep}Periodicity
 		subPolar = []
 		subPeriodicity = []
 		depPolar = []
 		depPeriodicity = []
+
 		for i in range(len(SubTermPos)):
-			pol, per = self.__checkPolar(SubTermPos[i].copy(),SubTermAtm[i],self.atomTyp,vecSubR[0],vecSubR[1])
+			if checkPolar:
+				# pol, per = self.__checkPolar(SubTermPos[i].copy(),SubTermAtm[i],self.atomTyp,vecSubR[0],vecSubR[1])
+				outCP = self.__checkPolar(SubTermPos[i].copy(),SubTermAtm[i],vecSubR[0],vecSubR[1])
+				pol = outCP[0]
+				per = outCP[1]
+			else:
+				pol = "N/A"
+				per = float('nan')
 			subPolar.append(pol)
 			subPeriodicity.append(per)
 
 		for i in range(len(DepTermPos)):
-			pol, per = self.__checkPolar(DepTermPos[i].copy(),DepTermAtm[i],self.atomTyp,vecSubR[0],vecSubR[1])
+			if checkPolar:
+				# pol, per = self.__checkPolar(DepTermPos[i].copy(),DepTermAtm[i],self.atomTyp,vecSubR[0],vecSubR[1])
+				outCP = self.__checkPolar(DepTermPos[i].copy(),DepTermAtm[i],vecSubR[0],vecSubR[1])
+				pol = outCP[0]
+				per = outCP[1]
+			else:
+				pol = "N/A"
+				per = float('nan')
 			depPolar.append(pol)
 			depPeriodicity.append(per)
 
@@ -2335,11 +2439,11 @@ class Interface:
 		self.IfaceVecs = [vecSubR[0],vecSubR[1],alignvec]
 
 	   	# Define new indices: idxDepH and idxSubH, which contain
-		# the number list of indices of Deposit and Hydrogens and 
+		# the number list of indices of Deposit and Hydrogens and
 		# Substrate and Hydrogens
 		# idxSub and idxDep contain indices of only Deposit and only
 		# Substrate
-		
+
 		# No capping atom so far, set all indices to False
 		self.IfaceCapIdx = []
 		for i in range(len(self.IfacePosSC)):
@@ -2360,7 +2464,7 @@ class Interface:
 			for i in range(len(self.IfacePosSC)):
 				self.IfaceAtmSC[i], self.IfaceCapIdx[i] \
 					= self.__addCapAtoms(self.IfacePosSC[i],\
-					self.IfaceAtmSC[i], capAtD, capAtS) 
+					self.IfaceAtmSC[i], capAtD, capAtS)
 
 		self.SDdist = []
 		for i in range(len(self.IfacePosSC)):
@@ -2388,9 +2492,9 @@ class Interface:
 				self.IfaceAtmSC[i] = np.concatenate((self.IfaceAtmSC[i], newSubLabels))
 				self.IfaceCapIdx[i] = np.concatenate((self.IfaceCapIdx[i], newCapIdx))
 				self.IfaceVecs[2][-1] += topSub - botSub + self.SDdist[i]
-		
+
 		if mkSlanted:
-			# OLD algorithm outputting rhomboidal interface cells. 
+			# OLD algorithm outputting rhomboidal interface cells.
 			# In most cases checkEdge subroutine is used instead.
 			for i in range(len(self.IfacePosSC)):
 				nEdgeIter = 15
@@ -2523,7 +2627,7 @@ class Interface:
 #		for i in self.IfacePosExSC:
 #			print self.IfaceAtmExSC[ii],i[0],i[1],i[2]
 #			ii+=1
-		### END FOR SCORING FUNC 
+		### END FOR SCORING FUNC
 
 #		print "SC1 DEPOSIT"
 		SubVecX = np.linalg.norm(vecSubR[0])
@@ -2570,15 +2674,15 @@ class Interface:
 
 	def __CreateSurface(self,posin,atoms,vec1,vec2,avecsin,nlayers,\
 			    bulkNN,periodic=True,genHD=True,genHS=True):
-		# Create surface given reduced superlattice vectors 
+		# Create surface given reduced superlattice vectors
 		# and plane coordinates coordinates
-		# The output surface is rotated so that 
+		# The output surface is rotated so that
 		# vec1 point x direction
 		# Return
 		# - positions and labels of surface
 		# - rotated anticipatory vectors
 		# - rotated vectors
-		
+
 		# list of indexes of atom belonging to the plane
 		#idxlist = []
 		#planeatms = []
@@ -2604,7 +2708,7 @@ class Interface:
 			Hpos = 0
 		idx = 0
 
-                # Orient the atoms in such a way that the coorindate origin is 
+                # Orient the atoms in such a way that the coorindate origin is
                 # in the middle of the top plane
                 # Find positions of only top plane
                 idxPlane = abs(pos[:,2]) == 0.0
@@ -2618,17 +2722,17 @@ class Interface:
                 nnXYZ = fneigh(cXYZ,posPlane)
                 originIdx = int(nnXYZ[0][1])
 
-		# Find the all the atoms that are inside the area 
+		# Find the all the atoms that are inside the area
 		# designated by vectors vec1 and vec2
 		# We will use barycentric coordinates to do this
 		# by defining two triangles with following corners:
 		# 1) (0,0,0), vec1, vec2
 		# 2) vec1+vec2, vec1, vec2
-	
+
 		# Shift the coordiante system so the origin is on first atom
 		# We need this for calculations in barycentric coordinates
 
-#		pos -= pos[0] # Does not work for large number of atoms 
+#		pos -= pos[0] # Does not work for large number of atoms
 		#shift = pos[0].copy()
 		shift = posPlane[originIdx].copy()
 		pos -= shift
@@ -2668,7 +2772,7 @@ class Interface:
 			if (a1 and b1 and c1) or (a2 and b2 and c2):
 			#	idxlist.append(idx)
 				idxlist[idx] = True
-			
+
 			idx += 1
 		# Create the surface
 		planepos = pos[idxlist]
@@ -2683,7 +2787,7 @@ class Interface:
 #			print planeatms[ii],i[0],i[1],i[2]
 #			ii+=1
 
-		# Rotate the plane in such a way that vec1 is aligned 
+		# Rotate the plane in such a way that vec1 is aligned
 		# with x axis
 		# Find the angle
 		vecx = np.array((1.0,0.0,0.0))
@@ -2691,21 +2795,21 @@ class Interface:
 		normx = np.linalg.norm(vecx)
 		cosphi = np.dot(vec1,vecx)/(normvec1*normx)
 		phi = m.acos(cosphi)
-		
+
 		# If vec1 is in 1st and 2nd quater of coordinate system
 		# define the angle such that  rotation is clockwise to x axis
 		if vec1[1] > 0:
 	        	phi =  phi * 180/m.pi
 		       	phi = 360 - phi
 		        phi = phi * m.pi/180
-		
+
 		# Find the rotation matrix
 		rotmat = rotmat2d(phi)
 
 		# Rotate plane positions so vector u is aligned with x
 		tmp = np.dot(rotmat,planepos[:,:2].T)
 		planepos[:,:2] = tmp.T
-		
+
 		planepos = CleanMatElements(planepos)
 
 		# Rotate vectors
@@ -2716,8 +2820,8 @@ class Interface:
 		vec1r = CleanMatElements(vec1r)
 		vec2r = CleanMatElements(vec2r)
 		# If vec2 is pointing toward 3th and/or 4th quater of coordinate
-		# system, flip the coordinates so they are in 1st and 2st 
-		# quater 
+		# system, flip the coordinates so they are in 1st and 2st
+		# quater
 		if vec2r[1] <0:
 			planepos[:,1] *= -1
 			vec2r[1] *= -1
@@ -2729,12 +2833,12 @@ class Interface:
 			tmp = np.dot(rotmat,tmp)
 			avecs[i][:2] = tmp
 
-		if periodic: 
+		if periodic:
 		# Find only unique atoms
 			uniqueidx = self.__removeperiodic(planepos,vec1r,vec2r)
 			planepos = planepos[uniqueidx]
 #			tmpatm = []
-#	
+#
 	#		for i in uniqueidx:
 	#			tmpatm.append(planeatms[i])
 	#		planeatms = tmpatm
@@ -2765,15 +2869,15 @@ class Interface:
 
 		gamma = 1.0 - alpha - beta
 		gamma = round(gamma,6)
-		
+
 		return alpha, beta, gamma
 
 	def __removeperiodic(self,pos,vec1,vec2):
 
 		# Find the atoms in the superlattice that are
-		# translations of the other atoms 
+		# translations of the other atoms
 
-		# Rude and not effecient solution 
+		# Rude and not effecient solution
 		# Try more through array interception
 
 		r = range(2)
@@ -2789,7 +2893,7 @@ class Interface:
 						poscheck = np.vstack\
 						          ([poscheck,tmp])
 
-		# Find indicies of unique elements in pos array that 
+		# Find indicies of unique elements in pos array that
 		# are not there is poscheck array
 		ii = 0
 		for i in pos:
@@ -2813,11 +2917,11 @@ class Interface:
 		# Generate the positions of the hydrogens on
 		# the bottom of the position array. It can be either deposit
 		# or substrate. Generate N-hydrogens, where N-is the number
-		# of dangling bonds. 
+		# of dangling bonds.
 
 		# pos - position of atoms after the cut along the planes
-		# refNN -  number of nearest neighbeours of atoms in the 
-		#          given material in bulk. Generated in "plane" 
+		# refNN -  number of nearest neighbeours of atoms in the
+		#          given material in bulk. Generated in "plane"
 		#          routine from "class Surface"
 
 		# Introcude threshold to find number neartest neighbours
@@ -2830,9 +2934,9 @@ class Interface:
 		# Find the atoms on the bottom plane. At this point,
 		# they have always negative z-components
 		bottom = min(pos[:,2])
-		# Add threshold, so one can avoid floating point comparrison, 
-		# and it is highly unlikely that any other atom in the 
-		# next layer on solid will have z-component only 0.05 
+		# Add threshold, so one can avoid floating point comparrison,
+		# and it is highly unlikely that any other atom in the
+		# next layer on solid will have z-component only 0.05
 		# higher
 		thresh = 0.7
 		bottom += thresh
@@ -2850,7 +2954,7 @@ class Interface:
 
 
 		# Find point in the middle of the bottom plane by
-		# finding centorid 
+		# finding centorid
 
 		cX = sum(postmp[:,0])/len(postmp[:,0])
 		cY = sum(postmp[:,1])/len(postmp[:,1])
@@ -2862,7 +2966,7 @@ class Interface:
 		# reference atom.
 		# If there are more than one atom types in the system,
 		# find them too
-			
+
 		nnXYZ = fneigh(cXYZ,postmp)
 
 		cidx = nnXYZ[0,1]
@@ -2890,7 +2994,7 @@ class Interface:
 			shift = nn[1,0].copy()
 			nn[:,0] -= shift
 			nn = CleanMatElements(nn)
-#		
+#
 			# Select only atoms with the shortest distance
 #			idx = nn[:,0] == 0.0
 			# take absolute value, as fist element in nn
@@ -2900,8 +3004,8 @@ class Interface:
 			print nn[idx]
 			nnlist = nn[idx]
 
-			# Number of hyrdogens will be equal to number of 
-			# number of nearest nieghbors in the bulk-number of 
+			# Number of hyrdogens will be equal to number of
+			# number of nearest nieghbors in the bulk-number of
 			# nearest neighbours on the bottom surface
 
 			print "catomlab",catomlab
@@ -2914,17 +3018,17 @@ class Interface:
 			# be later attached to each atom on the bottom surface
 
 			# Method to generate hydrogens poistions:
-			#  - put hydrogens on the bottom of the cone, where 
+			#  - put hydrogens on the bottom of the cone, where
 			# top of the
 			#    cone is attached to the surface atom,
 			#  - height of the cone is Hz=1.41
 			#  - radius of the bottom = 1
-			#  If there is only one hydrogen - put it along the 
+			#  If there is only one hydrogen - put it along the
 			#  height of the cone
-			#  If there is more than one hydrogen, put in on the 
+			#  If there is more than one hydrogen, put in on the
 			# circumferecne of the cone 360/nH apart of each other
 			# It is achieved by doing nH rotations of the initial
-			# point poistioned on the circumference of the cone 
+			# point poistioned on the circumference of the cone
 			# bottom
 
 #			Hz = -0.5
@@ -2938,13 +3042,13 @@ class Interface:
 #				Hpos = np.array((0.0, 0.0, Hz))
 				Hpos = np.zeros((1,3))
 #				# TMP for SiO2
-#				Hpos[0,0] = 1.0 
+#				Hpos[0,0] = 1.0
 #				# END TMP for SiO2
 				Hpos[0,2] = Hzs
 			elif nH>1:
 				Hpos = np.zeros((nH,3))
 				Hpos[0] = np.array((1.0, 0.0, Hz))
-	
+
 				phi = 360/nH
 			        phi = phi * m.pi/180
 				rotmat = rotmat2d(phi)
@@ -2963,17 +3067,17 @@ class Interface:
 		# Find indicies of atom at the bottom. For explenation,
 		# see comment to "def __genHydrogen"
 
-		# if top=False - add hydrogens to the bottom of the slab, 
+		# if top=False - add hydrogens to the bottom of the slab,
 		#                i.e. substrate
 		#
-		# if top=True - add hydrogens to the top of the slab, 
+		# if top=True - add hydrogens to the top of the slab,
 		#               i.e. deposit
 
 		# Return numpy array with hydrogen positions
 
-		# Add threshold, so one can avoid floating point comparrison, 
-		# and it is highly unlikely that any other atom in the 
-		# next layer on solid will have z-component only 0.05 
+		# Add threshold, so one can avoid floating point comparrison,
+		# and it is highly unlikely that any other atom in the
+		# next layer on solid will have z-component only 0.05
 		# higher
 		thresh = 0.7
 
@@ -2998,16 +3102,16 @@ class Interface:
 
 		# Tmp list to hold H positions
 		Hxyztmp = []
-		
+
 		# For each atom in the layer, check its atom label
 		# and find appropirate H vectors in Hpos dictionary.
-		# Than for each vector found in Hpos, generate hydrogen 
-		# positions. 
+		# Than for each vector found in Hpos, generate hydrogen
+		# positions.
 		for i in range(len(postmp)):
-			pvec = postmp[i] 
+			pvec = postmp[i]
 			atom = tmplabels[i]
 			Hvec = Hpos[atom] # find H vectors for given atom
-			
+
 			#For each vector in the set, get H postions
 			for j in Hvec:
 				Hxyztmp.append(j+pvec)
@@ -3020,8 +3124,8 @@ class Interface:
 	def __addHydrogens(self,posin,labels,idxD,idxS,HposD,HposS,genHD,genHS):
 
 		# Add hydrogens to the bottom of substrate and top of deposit
-		# 
-		# Hydrogen coordinates are added using "__getHydrogenPos" 
+		#
+		# Hydrogen coordinates are added using "__getHydrogenPos"
 		# routine, where "HposD" and "HposS" are arrays of hydrogens
 		# atom positions for a single atom of the surface obtained
 		# from  "__genHydrogen" subroutine.
@@ -3031,14 +3135,14 @@ class Interface:
 		# and same for Substrate
 
 		pos = posin.copy()
-		
+
 		if genHD:
 			DHxyz,DHlab = self.__getHydrogenPos\
 				      (pos,labels,HposD,top=True)
 		else:
 			DHxyz = []
 			DHlab = []
-	
+
 		if genHS:
 			SHxyz,SHlab = self.__getHydrogenPos\
 				      (pos,labels,HposS,top=False)
@@ -3058,7 +3162,7 @@ class Interface:
 #		pos = np.vstack([pos,SHxyz])
 		#idxDep = range(0,len(posDep))
 		#idxSub = range(len(posDep),len(posout))
-	
+
 		# Deposit + Deposit hydrogens positions
 		posout[0:natD] = pos[idxD]
 		if genHD and DHxyz != []:
@@ -3068,7 +3172,7 @@ class Interface:
 		posout[natD+natDH:natD+natDH+natS] = pos[idxS]
 		if genHS and SHxyz != []:
 			posout[natD+natDH+natS:] = SHxyz
-		
+
 		# Update indices of atoms of Deposit and Substrate to include
 		# hydrogens
 		idxDH = range(natD+natDH)
@@ -3082,13 +3186,13 @@ class Interface:
 		labelsD = labels[:natD]
 		labelsS = labels[natD:]
 
-		labels = labelsD + DHlab + labelsS + SHlab 
-		# We have added hydrogens below the substrate. 
+		labels = labelsD + DHlab + labelsS + SHlab
+		# We have added hydrogens below the substrate.
 		# Shift everything up, so hydrogen atom are at z=0
 		m = min(posout[:,2])
 		posout[:,2] -= m
-		
-		# Shift the position for additional 2 angstroms, so 
+
+		# Shift the position for additional 2 angstroms, so
 		# in the case when hydrogens position are optimized, they
 		# dont get shiffted to the top of tho box
 		posout[:,2] += 2
@@ -3099,7 +3203,7 @@ class Interface:
 	#		print labels[ii],i[0],i[1],i[2]
 #			ii += 1
 
-		return posout,labels,idxD,idxS,idxDH,idxSH 
+		return posout,labels,idxD,idxS,idxDH,idxSH
 
 	def __extendsurface(self,pos,labels,vec1,vec2,periodic=True):
 		# Extend the surface, by adding copies of the surface
@@ -3120,8 +3224,8 @@ class Interface:
 			for y in r:
 				if x != 0 or y!= 0:
 #					newpos = np.zeros((len(pos),3))
-	#				newpos[:,0] = pos[:,0] + x*lx 
-#					newpos[:,1] = pos[:,1] + y*ly 
+	#				newpos[:,0] = pos[:,0] + x*lx
+#					newpos[:,1] = pos[:,1] + y*ly
 					newpos = pos + x*vec1 + y*vec2
 					posout = \
 					      np.vstack([posout,newpos])
@@ -3139,24 +3243,24 @@ class Interface:
 	def __alignsurfaces(self,avecsDep,avecsSub,posDep,posSub,labDep,\
 			    labSub,bfrac,vecpair,vecSubR,mkSlanted=False):
 
-		# Pick appropriate pair of anticipatory 
-		# vectors from substrate and deposit 
+		# Pick appropriate pair of anticipatory
+		# vectors from substrate and deposit
 		avecsSidx = vecpair[1]
 		avecsDidx = vecpair[2]
-		if (avecsSidx >= 0) and (avecsDidx >= 0): 
+		if (avecsSidx >= 0) and (avecsDidx >= 0):
 			avecS = avecsSub[avecsSidx]
 			avecD = avecsDep[avecsDidx]
 		else:
-			# if indices are negative, it means alignment 
+			# if indices are negative, it means alignment
 			# along vertical pointing vectors
 			avecS = np.array([0,0,np.linalg.norm(avecsSub[0])])
 			avecD = np.array([0,0,np.linalg.norm(avecsDep[0])])
-		
+
 		# Define resulting anticipatory vector
 		#vector = avecS+avecD
 		vector = avecS.copy()
 
-		# Define spacing between layers as average of substrate and 
+		# Define spacing between layers as average of substrate and
 		# deposit spacing
 #		vector[2] /= 2 enable if avecS+avecD
 #		vector[0] /= 2 enable if avecS+avecD
@@ -3171,7 +3275,7 @@ class Interface:
 #		bfrac = 1.802/cosphi
 #		print "BFRAC", cosphi,bfrac
 		#For the straight vector, bfrac = 0.9
-#		if (avecsSidx < 0) and (avecsDidx < 0): 
+#		if (avecsSidx < 0) and (avecsDidx < 0):
 #			bfrac = 0.9
 
 
@@ -3182,15 +3286,15 @@ class Interface:
 
 		# start TEST covalent radius displacement
 		lv = np.linalg.norm(vector)
-		# end TEST 
+		# end TEST
 		#bfrac = 0.9
 #		bfrac = bfrac/lv # REMOVED 10/01/2015
 #		vector = vector*bfrac # REMOVED 10/01/2015
 		#vector[2]=1.8024400000000007
 		vector[2]=bfrac
 
-		
-		# Now, move the deposit according the resulting anticipatory 
+
+		# Now, move the deposit according the resulting anticipatory
 		# vector
 
 		#posDep = self.DepSurfPos
@@ -3210,11 +3314,11 @@ class Interface:
 		posDeptmp[:,:2] = tmp.T
 		posDeptmp = posDeptmp + vecSubR[0] + vecSubR[1]
 		# Translate according to vector
-		posDeptmp = posDeptmp + vector 
+		posDeptmp = posDeptmp + vector
 
 		# Save Substrate + Deposit positions
 		posout = np.zeros((len(posDep)+len(posSub),3))
-		
+
 		#Deposit first
 		posout[0:len(posDep)] = posDeptmp
 		posout[len(posDep):] = posSub
@@ -3229,13 +3333,13 @@ class Interface:
 		# Shift the coordinates so the corner of the box is 0,0,0
 		shift = min(posout[:,2])
 		posout[:,2] -= shift
-		
+
 		# Return also vector which will be used as z-vector for the
 		# direction vector of the interface
 		# Find z-variable of top of the interface
 		# TODO:
 		# We are taking advantage that interface is parallel to x-y
-		# plane, and we can find end of the vetor by taking 
+		# plane, and we can find end of the vetor by taking
 		# biggest value of z-coordiante in the interface and scaling
 		# anticpatory vector accordingly
 		# More elegant solution: find the intercept of the line one
@@ -3248,7 +3352,7 @@ class Interface:
 		topSub = max(posout[idxSub][:,2])
 		botDep = min(posout[idxDep][:,2])
 		spacing = botDep - topSub
-		
+
 		vector[-1] += spacing
 
 		vectorOut = vector.copy()
@@ -3263,12 +3367,12 @@ class Interface:
 	def __scaleShear(self, pos, vec1D, vec2D, vec1S, vec2S, poissonRatio):
 
 		# Scale the Deposit lattice to match the Substrate lattice
-		# Scaling is done with the use of the shear matrix, which transaltes 
+		# Scaling is done with the use of the shear matrix, which transaltes
 		# Deposit along the x-direction, so the angle between X-0-Y is the same in
 		# Deposit in Substrate. Next, length of the Deposit X and Y vectors is scaled to match
 		# the ones from the Substrate
-		# The method always enforces perfect PBC, with the cost of slight distortion of crystal lattice of 
-		# Deposit, i.e. the angles and bond lengths are slightly different from the original bulk values. 
+		# The method always enforces perfect PBC, with the cost of slight distortion of crystal lattice of
+		# Deposit, i.e. the angles and bond lengths are slightly different from the original bulk values.
 
 		n1D = np.linalg.norm(vec1D)
 		n2D = np.linalg.norm(vec2D)
@@ -3289,7 +3393,7 @@ class Interface:
 		m = np.array([[1,k,0],[0,1,0],[0,0,1]])
 
 		vec2Dshear = np.dot(m,vec2D)
-		
+
 		#posout = np.dot(posout,m)
 		for i in range(len(posout)):
 			atom = posout[i]
@@ -3324,24 +3428,24 @@ class Interface:
 			m1 = n1D/n1S # misfit in x
 			m2 = n2D/n2S # misfit in y
 
-			mz = m1 * m2 
+			mz = m1 * m2
 			vec3scale = np.array((1.0, 1.0, mz))
 			posout = posout * vec3scale
 
 		return posout
 
 	def __scaleRotation(self,pos,vec1D,vec2D,vec1S,vec2S,poissonRatio):
-		
+
 		# Scale the coordinates such that deposit
 		# is always matching substrate
-		# The scaling is done by application of Rotation matrix, 
+		# The scaling is done by application of Rotation matrix,
 		# which set the X-0-Y (gamma) angle in the Deposit to be equal to
 		# the one in Substrate. Next the length of the vectors is scaled accordingly.
-		# This is old method, __scaleShear should be used instead. Due to rotation of the 
-		# lattice vectors, also the whole lattice orientation is rotated, which destroys the 
-		# periodicity of the Deposit and creates defects on the edges. 
-		# The advantage over __scaleShear is that is keeps the crystal lattice (bond lengths and  
-		# angles) undistorted. 
+		# This is old method, __scaleShear should be used instead. Due to rotation of the
+		# lattice vectors, also the whole lattice orientation is rotated, which destroys the
+		# periodicity of the Deposit and creates defects on the edges.
+		# The advantage over __scaleShear is that is keeps the crystal lattice (bond lengths and
+		# angles) undistorted.
 
 
 
@@ -3413,21 +3517,21 @@ class Interface:
 		return posout
 
 	def __checkEdge(self):
-		
-		# When the Deposit is translated in the plane of the interface by anticipatory vector direction 
+
+		# When the Deposit is translated in the plane of the interface by anticipatory vector direction
 		# align Deposit on top of Substrate so the whole cell is tetragonal.
 		# Algorithm:
 		# Using barycentric coordinates check if the atoms on deposit are contained in the area
 		# desingated by the substrate lattice vectors X and Y.
 		# If they are not, translate them following PBC to the inside of the area designated by X-Y
 
-		vec1 = self.IfaceVecs[0][0:2] # only x,y- components of lattice vector A 
+		vec1 = self.IfaceVecs[0][0:2] # only x,y- components of lattice vector A
 		vec2 = self.IfaceVecs[1][0:2] # only x,y- components of lattice vector B
 		X = vec1[0]
 		Y = vec2[1]
 
 		# Calculate tangent of the angle between  vec1 and vec2
-		# This is required to calculate projection of atom on lattice vector X in 
+		# This is required to calculate projection of atom on lattice vector X in
 		# the case a cell is a parallelogram
 		nY = np.linalg.norm(vec2)
 		sinphi = Y/nY
@@ -3465,7 +3569,7 @@ class Interface:
 				a2 = alpha2 >= 0 and alpha2 <= 1
 				b2 = beta2  >= 0 and beta2  <= 1
 				c2 = gamma2 >= 0 and gamma2 <= 1
-		
+
 				if not(a1 and b1 and c1) or not(a2 and b2 and c2):
 					translateAtom = True
 
@@ -3475,8 +3579,8 @@ class Interface:
 					# - systems are always oriented in the 1st quarter of coordinate system
 					# - lattice vector X is always in the direction [x,0,0]
 					# The translation of the atom will follow with 3 cases:
-					# 1) if its x and y- components are large than x and y components of Y and Y vector, 
-					# 2) if its x-component is larger than x component of X lattice vector, subtract X 
+					# 1) if its x and y- components are large than x and y components of Y and Y vector,
+					# 2) if its x-component is larger than x component of X lattice vector, subtract X
 					# 3) if its y-component is larger than y component of Y lattice vector, subtract Y
 					#    subtract X and Y
 
@@ -3552,15 +3656,16 @@ class Interface:
 
 		return pos
 
-	def __checkPolar(self,positions,atomLabels,atomTypes,vecX,vecY):
+	# def __checkPolar(self,positions,atomLabels,atomTypes,vecX,vecY):
+	def __checkPolar(self,atom_coor,atomLabels, vecX, vecY, z_layer_tol=1e-3, dist_tol_rate=0.01, max_compare = float("Inf"), inverse_struc = False):
 		# Description of the variables:
 		# - self: not used here, required because subroutine is inside Class
 		# - positions: of the atoms, numpy.array(Natoms,3)
-		# - atomLabels: numpy.array with integers denoting atom types, 
-		#   i.e [0,1,1,0,2,...,natoms]. The order of the atoms is the same 
+		# - atomLabels: numpy.array with integers denoting atom types,
+		#   i.e [0,1,1,0,2,...,natoms]. The order of the atoms is the same
 		#   as in positions array.
 		# - atomTypes: dictionary that allows to decode entries in the atomLabels
-		#   in terms of real chemical species. 
+		#   in terms of real chemical species.
 		#   Example:
 		#    atomTypes = {0: 'Ga', 1: 'As', 2: 'H'}
 		#    which means that integer 0 corresponds to "Ga", integer 1 to "As" and 2 to "H"
@@ -3574,23 +3679,189 @@ class Interface:
 		# - vecX: lattice vector X, numpy.array[x1, x2, x3]
 		# - vecY: lattice vector Y, numpy.array[y1, y2, y3]
 		#
-		# 
+		#
 
 		#  Start implementation:
 		# Flip the slab so the (hkl) layer is on the bottom and everything else is above it
-		positions[:,2] *= -1
-		#  
+		# positions[:,2] *= -1
+		#
 		#  Do lots of cool stuff here
 
-		#  Return values are 
+		#  Return values are
 		#  polar = {True,False} - is structure polar or not
 		#  periodicity = 0  - integer number saying what is the periodicity of the strucure
-		
-		# Setting dummy values now:
-		polar = False
-		periodicity = 0
 
+		# Setting dummy values now:
+		# polar = False
+		# periodicity = 0
+		#
+		# return polar, periodicity
+
+
+		#### START: Boya implementation ####
+		# vecX = self.vecSubR[0,0:2] # Boya orginal
+		# vecY = self.vecSubR[1,0:2] # Boya orginal
+		vecX = vecX[0:2] # Kuba mod
+		vecY = vecY[0:2] # Kuba mod
+		periodicity = float("nan")
+
+	    # first 180 primes
+		primes = [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,293,307,311,313,317,331,337,347,349,353,359,367,373,379,383,389,397,401,409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499,503,509,521,523,541,547,557,563,569,571,577,587,593,599,601,607,613,617,619,631,641,643,647,653,659,661,673,677,683,691,701,709,719,727,733,739,743,751,757,761,769,773,787,797,809,811,821,823,827,829,839,853,857,859,863,877,881,883,887,907,911,919,929,937,941,947,953,967,971,977,983,991,997,1009,1013,1019,1021,1031,1033,1039,1049,1051,1061,1063,1069];
+
+		nAtoms = len(atomLabels);
+		# represent the atom types by prime numbers
+		ele_n = np.empty([nAtoms, 1]);
+		ii=0;
+		atomLabels = np.array(atomLabels);
+		for i in xrange(int(min(atomLabels)), int(max(atomLabels)+1)):
+			ele_n[atomLabels == i]= primes[ii];
+			ii += 1;
+		ele_n = np.outer(ele_n,ele_n);
+		ele_n[range(nAtoms), range(nAtoms)] = 0;
+
+		# build the distance matrix (size nAtoms*nAtoms, entry i,j represent for the distance between i-th atom and j-th atom)
+		atom_dist = np.empty([nAtoms, nAtoms], dtype=float);
+		for i in xrange(0, nAtoms):
+			for j in xrange(i,nAtoms):
+				atom_dist[i,j] = compute_min_dist(atom_coor[i, 0:2] - atom_coor[j, 0:2], vecX, vecY);
+				atom_dist[i,j] = atom_dist[i,j]+(atom_coor[i, 2] - atom_coor[j, 2])**2;
+				atom_dist[j,i] = atom_dist[i,j]
+		atom_dist[range(nAtoms), range(nAtoms)] = -1; # avoid zero-division in later steps
+
+		# round the z-coordinate
+		atom_coor[:, 2] = np.floor(atom_coor[:, 2] / z_layer_tol)*z_layer_tol;
+		# atoms with same cut_z coord are considered on the same "surface"
+		# inverse_struc=False: the resut is ordered from small to large
+		if inverse_struc:
+			surface_z = -np.squeeze(np.unique(-atom_coor[:, 2]));
+			#pdb.set_trace();
+		else:
+			surface_z= np.squeeze(np.unique(atom_coor[:, 2], return_inverse=False));
+
+		surface_n=len(surface_z); # number of surfaces
+		init_z = surface_z[-1]; # the first surface to consider
+		firstRound = False;
+		forDelete = np.zeros([nAtoms], dtype=bool);
+
+		while(surface_n>=2 and not(abs(surface_z[0]-surface_z[-1])<abs(init_z-surface_z[-1]) and not(firstRound))): # the first round non-polar must be found within the upper half of the structure
+			if max_compare> (surface_n/2): # take advange of integer division
+				max_compare=(surface_n/2);
+			polar=False;
+			doCompare = True;
+			minDiffRate = True
+			typeDiff = False
+
+			if firstRound:
+				if abs(init_z-surface_z[-1]) < perodicity_lower_bound:
+					doCompare = False;
+
+			if doCompare:
+				for nSurface in xrange(0,max_compare):
+				#each row represents for an atom
+				# the indices of atoms on the upper surface & lower surface
+					u_lidx = atom_coor[:, 2]==surface_z[nSurface];
+					u_lidx = u_lidx [~forDelete];
+					l_lidx =atom_coor[:, 2]==surface_z[-nSurface-1];
+					l_lidx = l_lidx[~forDelete];
+					# if the number of atoms are different
+					if sum(u_lidx) != sum(l_lidx):
+						polar=True;
+						break;
+
+					nAtomPerLayer = sum(u_lidx);
+
+					data_upper_dist= atom_dist[u_lidx,:];
+					data_lower_dist= atom_dist[l_lidx,:];
+
+					# # can speed up the code if we only want to get polar/non-polar
+					# if np.setdiff1d(data_upper_dist,data_lower_dist):
+					#     polar = True;
+					#     break;
+
+
+					data_upper_type= ele_n[u_lidx,:];
+					data_lower_type= ele_n[l_lidx,:];
+
+					# # can speed up the code if we only want to get polar/non-polar
+					# if np.setdiff1d(data_upper_type, data_lower_type).size:
+					#     polar = True;
+					#     break;
+
+					# for each atom, sort the matrix by: type primarily, distance secondarily
+					for i in xrange(nAtomPerLayer):
+						sortidx_u = np.lexsort((data_upper_dist[i,:], data_upper_type[i,:]));
+						sortidx_l = np.lexsort((data_lower_dist[i,:], data_lower_type[i,:]));
+						data_upper_dist[i,:] = data_upper_dist[i,sortidx_u];
+						data_upper_type[i,:] = data_upper_type[i,sortidx_u];
+						data_lower_dist[i,:] = data_lower_dist[i,sortidx_l];
+						data_lower_type[i,:] = data_lower_type[i,sortidx_l];
+
+					dist_diff = np.zeros([nAtomPerLayer*2,nAtomPerLayer*2], dtype = float); # rate of difference on distance
+					type_ok = np.zeros([nAtomPerLayer*2,nAtomPerLayer*2], dtype = bool); # true if the type items are matching between a upper-atom and a lower-atom
+					for idx_upper in xrange(nAtomPerLayer):
+						for idx_lower in xrange(nAtomPerLayer):
+							 dist_diff[idx_upper,nAtomPerLayer+idx_lower] = max(abs(np.divide(data_upper_dist[idx_upper,:]-data_lower_dist[idx_lower,:], data_upper_dist[idx_upper,:]+data_lower_dist[idx_lower,:])));
+							 type_ok[idx_upper,nAtomPerLayer+idx_lower]= all(data_upper_type[idx_upper,:]==data_lower_type[idx_lower,:]);
+
+					dist_diff = dist_diff + np.transpose(dist_diff);
+					type_ok = type_ok + np.transpose(type_ok);
+					match_matrix = (dist_diff<=dist_tol_rate) & type_ok;
+
+					g = networkx.to_networkx_graph(match_matrix);
+					# pdb.set_trace();
+
+					# find the maximal matching of graph g
+					if len(networkx.maximal_matching(g))< nAtomPerLayer:
+						polar=True;
+
+						g = networkx.to_networkx_graph(type_ok);
+						if len(networkx.maximal_matching(g))< nAtomPerLayer:
+							typeDiff = True;
+							minDiffRate = False;
+						else:
+							minDiffRate = True;
+
+						break;
+
+	                # END of nSurface loop
+
+				if not(polar) and not(firstRound): # first round NonPolar
+					firstRound = True
+					layer_thickness = 0
+					minNP_z = np.array([surface_z[-1]])
+					perodicity_lower_bound = abs(init_z - minNP_z); # the periodicity should be larger than this
+				else:
+					if not(polar) and firstRound and (abs(minNP_z[0] - surface_z[-1])>perodicity_lower_bound): # the second round non-polar
+						minNP_z = np.append(minNP_z, surface_z[-1]);
+						layer_thickness = layer_thickness + 1;
+						z_thickness = minNP_z[0]-minNP_z[-1];
+						minDiffRate = False
+						return polar, z_thickness, minDiffRate, typeDiff
+
+				if polar and firstRound:
+					layer_thickness = layer_thickness + 1;
+					minNP_z = np.append(minNP_z,surface_z[-1]);
+	            #pdb.set_trace();
+
+			data_delete = (atom_coor[:, 2]==surface_z[-1]);
+			data_delete = data_delete[~forDelete];
+			forDelete= np.squeeze(forDelete | (atom_coor[:, 2]==surface_z[-1]));
+			atom_dist = atom_dist[~data_delete,:];
+			atom_dist = atom_dist[:,~data_delete];
+			ele_n = ele_n[~data_delete,:];
+			ele_n = ele_n[:,~data_delete];
+			#pdb.set_trace();
+			surface_n=surface_n-1;
+			surface_z = np.delete(surface_z, -1);
+			# pdb.set_trace();
+
+
+		z_thickness=float("nan");
+		layer_thickness = float("nan");
 		return polar, periodicity
+
+		#### END: Boya implementation ####
+
 
 	def __idTermAtoms(self,coord,atom):
 		# Find which atom type terminates the interface surface in the material
@@ -3598,16 +3869,16 @@ class Interface:
 		# Find all the atom in the interface layer
 		surfZ = max(coord[:,2])
 		idx = coord[:,2] == surfZ
-		surfAtom = atom[idx] 
+		surfAtom = atom[idx]
 		# Return first atom from interface layer
 		return surfAtom[0]
 
 
 	def __diffTerminations(self, coord, atoms):
 		# In the case of materials with two or more atoms types,
-		# prepare two different versions, where the interface surface 
+		# prepare two different versions, where the interface surface
 		# it terminated with one or the other atom type
-		
+
 		# Set accuracy parameter
 		acc = 6
 
@@ -3637,8 +3908,8 @@ class Interface:
 		for i in range(len(coord)):
 			atom = coord[i]
 			atomT = atoms[i]
-			
-			if (round(atom[2],acc) != top) and (round(atom[2],acc) != bot): 
+
+			if (round(atom[2],acc) != top) and (round(atom[2],acc) != bot):
 				# Atom not in top or bottom layer, add to all structures
 				posTop.append(atom)
 				atomsTop.append(atomT)
@@ -3652,14 +3923,14 @@ class Interface:
 				# Atom in bottom layer, add only to top structure
 				posTop.append(atom)
 				atomsTop.append(atomT)
-		posTop = np.array(posTop)	
-		posBot = np.array(posBot)	
+		posTop = np.array(posTop)
+		posBot = np.array(posBot)
 		atomsTop = np.array(atomsTop)
 		atomsBot = np.array(atomsBot)
 		# If number of atoms in two versions of the slab is different,
-		# discard it and return original positions. We want to have two slabs 
-		# with the same number of atoms. 
-		if len(posBot) != len(posTop): 
+		# discard it and return original positions. We want to have two slabs
+		# with the same number of atoms.
+		if len(posBot) != len(posTop):
 			outputC = [coord]
 			outputA = [atoms]
 			outputT = [self.__idTermAtoms(coord,atoms)]
@@ -3765,7 +4036,7 @@ class Interface:
 					w = m.cos(f*delta)
 					if delta > cut: w = 0
 					bcount.append(w)
-					# Store the difference of the 
+					# Store the difference of the
 					# bond angle and anticipatory
 					# vector angle
 					angles.append(abs(phi-phiref))
@@ -3778,7 +4049,7 @@ class Interface:
 #			bcount = bcount[::-1] #reverse array
 #			angles = angles[idx]
 #			angles = angles[::-1]
-#			
+#
 #			# Sort the bonds according to the angle bond-anticpatory
 #			# vector angle difference
 #			bidx = bcount > 0
@@ -3798,14 +4069,14 @@ class Interface:
 			bcount = bcount[idx]
 			Q1 = sum(bcount[0:nb])
 			Q2 = sum(bcount[nb:])
-		
+
 			Q = Q1-Q2
 			if Q < 0: Q = 0
 
 			blist.append(Q)
 
 		nbonds = sum(blist)
-		
+
 		#CALCULATE UNIT AREA
 		normu = np.linalg.norm(u)
 		normv = np.linalg.norm(v)
@@ -3818,7 +4089,7 @@ class Interface:
 		scoreref = (natms*nb)/area
 		score = score/scoreref
 
-		return score 
+		return score
 
 
 	def SCORE5(self,pos,idx1,idx2,avecs1,avecs2,latticevecs):
@@ -3872,22 +4143,22 @@ class Interface:
 					cut = m.acos(0)/f # where cos ends
 
 					w = m.cos(f*delta) # bond legth weight
-					wa = m.cos(deltaphi) # angle weight 
+					wa = m.cos(deltaphi) # angle weight
 					if delta > cut: w = 0
 					bcount.append(w*wa)
 
-			# Sorting	
+			# Sorting
 			bcount.sort(reverse=True)
 			Q1 = sum(bcount[0:nb])
 			Q2 = sum(bcount[nb:])
-		
+
 			Q = Q1-Q2
 			if Q < 0: Q = 0
 
 			blist.append(Q)
 
 		nbonds = sum(blist)
-		
+
 		#CALCULATE UNIT AREA
 		normu = np.linalg.norm(u)
 		normv = np.linalg.norm(v)
@@ -3900,7 +4171,7 @@ class Interface:
 		scoreref = (natms*nb)/area
 		score = score/scoreref
 
-		return score 
+		return score
 
 	def SCORE6(self,pos,idx1,idx2,avecs1,avecs2,latticevecs):
 		# NUMBER OF BONDS PER UNIT ARES
@@ -3956,7 +4227,7 @@ class Interface:
 					cuta = m.acos(0)/fa # where angle cos end
 
 					w = m.cos(f*delta) # bond legth weight
-					wa = m.cos(fa*deltaphi) # angle weight 
+					wa = m.cos(fa*deltaphi) # angle weight
 					if delta > cut: w = 0
 					if deltaphi > cuta: wa = 0
 					bcount.append(w*wa)
@@ -3974,7 +4245,7 @@ class Interface:
 			Q1 = sum(bcount[0:nb])
 			Q2 = sum(bcount[nb:])
 
-#			# Sorting	
+#			# Sorting
 #			bcount.sort(reverse=True)
 #			Q1 = sum(bcount[0:nb])
 #			Q2 = sum(bcount[nb:])
@@ -3987,13 +4258,13 @@ class Interface:
 			print angles[0:5]
 			print bdelta[0:5]
 			print Q
-			print 
+			print
 
 			blist.append(Q)
 
 		nbonds = sum(blist)
 		print "NBONDS",nbonds
-		
+
 		#CALCULATE UNIT AREA
 		normu = np.linalg.norm(u)
 		normv = np.linalg.norm(v)
@@ -4008,20 +4279,20 @@ class Interface:
 
 		print "SCORE",score
 
-		return score 
+		return score
 
 	def SCORE7(self,pos,idx1,idx2,avecs1,avecs2,latticevecs,\
 			labels,avecsall1,f,atomicRadius,mx,my,mphi):
 		# NUMBER OF BONDS PER UNIT ARES
 		#
 		# WEIGHTED BY BONDLENGTH
-		# Q= sum(cos(delta)[1:Nav] 
+		# Q= sum(cos(delta)[1:Nav]
 		#
 		# ORDERED BY DELTA BOND LENGTH
 
 		u = latticevecs[0]
 		v = latticevecs[1]
-		
+
 		#Cosine parameter
 #		f = 3.0
 		f=float(f)
@@ -4063,12 +4334,12 @@ class Interface:
 #			print bcount[0:5]
 #			print bdist[0:5]
 #			print Q
-#			print 
+#			print
 
 				blist.append(Q)
 
 		nbonds = sum(blist)
-		
+
 		#CALCULATE UNIT AREA
 		normu = np.linalg.norm(u)
 		normv = np.linalg.norm(v)
@@ -4080,9 +4351,9 @@ class Interface:
 		#Reference
 		scoreref2 = (natms*nb)/area
 #		score = score/scoreref
-		
+
 		#Reference
-		scoreref = 0 
+		scoreref = 0
 		for i in idx1:
 			atom = labels[i]
 			if atom in avecsall1:
@@ -4102,7 +4373,7 @@ class Interface:
 		# NUMBER OF BONDS PER UNIT ARES
 		#
 		# WEIGHTED BY BONDLENGTH
-		# Q= sum(cos(delta)[1:Nav] 
+		# Q= sum(cos(delta)[1:Nav]
 		#
 		# ORDERED BY DELTA BOND LENGTH
 		#
@@ -4111,7 +4382,7 @@ class Interface:
 
 		u = latticevecs[0]
 		v = latticevecs[1]
-		
+
 		#Cosine parameter
 #		f = 3.0
 		f=float(f)
@@ -4152,7 +4423,7 @@ class Interface:
 			blist.append(Q)
 
 		nbonds = sum(blist)
-		
+
 		#CALCULATE UNIT AREA
 		normu = np.linalg.norm(u)
 		normv = np.linalg.norm(v)
@@ -4174,22 +4445,22 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				     writeVASP=False,writeNWChem=False,\
 				     cstrlxD=0,cstrlxS=0,\
 				     cstrlxH=False,\
-				     bondmod=False): 
+				     bondmod=False):
 	#
 	# Write to XYZ file with coordinates for given interface
 	# Optional create DFTB+ GEN file format using external program
 	#
-	# cstrlx - optional create AIMS file with contrained atoms on the 
+	# cstrlx - optional create AIMS file with contrained atoms on the
 	# edge of deposit and substrate
 	# and with constrained hydrogen atoms:
 	# cstrlxHD - hydrogens on deposit
 	# cstrlxHS - hydrogens on substrate
-	# 
+	#
 
 	norma = np.linalg.norm(iface.IfaceVecs[0])
 	normb = np.linalg.norm(iface.IfaceVecs[1])
 	normc = np.linalg.norm(iface.IfaceVecs[2])
-	
+
 	# Gamma angle - x-y vectors
 	cosphi = np.dot(iface.IfaceVecs[0],iface.IfaceVecs[1])/(norma*normb)
 	phi = m.acos(cosphi)
@@ -4208,13 +4479,13 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 
 	# Interface area
 	area = norma * normb * sinphi
-	
+
 	for t in range(len(iface.IfacePosSC)): # Iterate over all possible intrfaces with different faces
 		natoms  = len(iface.IfacePosSC[t])
-		# in the case there is no hydrogens added - iface.idxSubH and 
+		# in the case there is no hydrogens added - iface.idxSubH and
 		# iface.idxDepH are set to iface.idxSub and iface.idxDep in
 		# class Interface
-		natomsS = len(iface.idxSubH[t]) 
+		natomsS = len(iface.idxSubH[t])
 		natomsD = len(iface.idxDepH[t])
 
 		# Find distance between substrate and deposit in straight line
@@ -4260,17 +4531,17 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 			summaryFile = open('summary.txt','a')
 			summaryFileCSV = open('summary.csv','a')
 
-		summaryFile.write("%12s   %12s   %12s   %12s   %12i   %12i   %12.2f   %12i   %12i   %12i   %12s   %12s   %12.2f   %12.2f   %12.2f   %12.2f   %12.3f   %12.2f   %12s   %12s   %16i   %12s   %16i\n"\
+		summaryFile.write("%12s   %12s   %12s   %12s   %12i   %12i   %12.2f   %12i   %12i   %12i   %12s   %12s   %12.2f   %12.2f   %12.2f   %12.2f   %12.3f   %12.2f   %12s   %12s   %16.2f   %12s   %16.2f\n"\
 				%(Sname,Sface,Dname,Dface,aligNo,confno,\
 				  area,natoms,natomsS,natomsD,termAtmS,termAtmD,mfit[0],mfit[1],mfit[2],mfit[3],score,iface.SDdist[t],rhombOpt,subPolar,supPerio,depPolar,depPerio))
 
-		summaryFileCSV.write("%12s , %12s , %12s , %12s , %12i , %12i , %12.2f , %12i , %12i , %12i , %12s , %12s , %12.2f , %12.2f , %12.2f , %12.2f , %12.3f , %12.2f , %12s, %12s , %16i , %12s ,%16i\n"\
+		summaryFileCSV.write("%12s , %12s , %12s , %12s , %12i , %12i , %12.2f , %12i , %12i , %12i , %12s , %12s , %12.2f , %12.2f , %12.2f , %12.2f , %12.3f , %12.2f , %12s, %12s , %16.2f , %12s ,%16.2f\n"\
 				%(Sname,"'"+Sface+"'",Dname,"'"+Dface+"'",aligNo,confno,\
 				  area,natoms,natomsS,natomsD,termAtmS,termAtmD,mfit[0],mfit[1],mfit[2],mfit[3],score,iface.SDdist[t],rhombOpt,subPolar,supPerio,depPolar,depPerio))
 
 		summaryFile.close()
 		summaryFileCSV.close()
-			       
+
 		#dirname = "%s%s-%s%s/%i"%(Dname,Dface,Sname,Sface,vecpairidx)
 		dirnameConf = "%s%s-%s%s-%i"%(Dname,Dface,Sname,Sface,confno)
 		if bondmod:
@@ -4280,7 +4551,7 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 			os.makedirs(dirname)
 		except OSError:
 			pass
-	
+
 
 		# Write which vectors we are using for alignement
 		ftmp = open("%s/vectors.txt"%dirname,'w')
@@ -4368,7 +4639,7 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 					%(dirname,Dname,Dface,Sname,Sface,confno)
 
 
-			# Index file with number of atoms in 
+			# Index file with number of atoms in
 			# Interface,Deposit and Substate, and the area
 			filenameIDX  = "%s/%s%s-%s%s-%2.1f.idx"%(dirname,Dname,Dface,\
 						   Sname,Sface,confno)
@@ -4442,7 +4713,7 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				filenameDNWCNoH = "%s/%s%s-%s%s-%i-%s-%s-D-NoH.nwc"\
 					%(dirname,Dname,Dface,Sname,Sface,confno,termAtmD,termAtmS)
 
-			# Index file with number of atoms in 
+			# Index file with number of atoms in
 			# Interface,Deposit and Substate
 			filenameIDX  = "%s/%s%s-%s%s-%i-%s-%s.idx"%(dirname,Dname,Dface,\
 						   Sname,Sface,confno,termAtmD,termAtmS)
@@ -4486,7 +4757,7 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 
 		fileIDX = open(filenameIDX,'w')
 
-		# For isolated deposit, we want to have it shifted to the bottom 
+		# For isolated deposit, we want to have it shifted to the bottom
 		# of the box
 		pos = iface.IfacePosSC[t]
 		Dshift = min(iface.IfacePosSC[t][iface.idxDepH[t],2])
@@ -4620,7 +4891,7 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				     (iface.IfaceVecs[2][0]*nVacM,\
 				      iface.IfaceVecs[2][1]*nVacM,\
 				      iface.IfaceVecs[2][2]*nVacM))
-		
+
 		# Outputting GULP
 		if writeGULP:
 			print "Generating GULP .gin file"
@@ -4677,15 +4948,15 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 
 		if writeNWChem:
 			print "Generating NWChem .nwc file"
-			fileNWC.write("geometry units angstrom\n")    
-			fileSNWC.write("geometry units angstrom\n")   
-			fileDNWC.write("geometry units angstrom\n")  
-			fileNWCNoH.write("geometry units angstrom\n")  
-			fileSNWCNoH.write("geometry units angstrom\n")  
-			fileDNWCNoH.write("geometry units angstrom\n")  
+			fileNWC.write("geometry units angstrom\n")
+			fileSNWC.write("geometry units angstrom\n")
+			fileDNWC.write("geometry units angstrom\n")
+			fileNWCNoH.write("geometry units angstrom\n")
+			fileSNWCNoH.write("geometry units angstrom\n")
+			fileDNWCNoH.write("geometry units angstrom\n")
 
 		#Find top and bottom layer
-		threshold = 0.2 # define threshol to add to top and bottom for 
+		threshold = 0.2 # define threshol to add to top and bottom for
 				# float comparisons
 		frozenidx=[]
 		if (cstrlxS):
@@ -4726,7 +4997,7 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				for i in range(len(mFrozenI)):
 					if mFrozenI[i]:
 						frozenidx.append(i)
-			else: 
+			else:
 				topI = iface.IfacePosSC[t][:,2] > top
 
 				for i in range(len(topI)):
@@ -4744,13 +5015,13 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 
 		mBottomD = nLD + (nLD/3.0)
 		mTopD    = nLD + (2*(nLD/3.0))
-		
+
 		if writeNWChem:
 			NWChemSubIdx = []
 			NWChemDepIdx = []
 		for i in range(len(iface.IfacePosSC[t])):
 			if writeNWChem:
-				# For NWChem output construct global matrices that indicates 
+				# For NWChem output construct global matrices that indicates
 				# if atom is in substrte/deposit. This is needed to create output
 				# without hydrogens
 
@@ -4758,7 +5029,7 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 					NWChemSubIdx.append(1)
 				else:
 					NWChemSubIdx.append(0)
-					
+
 				if i in iface.idxDepH[t]:
 					NWChemDepIdx.append(1)
 				else:
@@ -4801,9 +5072,9 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				fileNWC.write("%-4s   %12.6f   %12.6f   %12.6f\n"%(atom,x,y,z))
 
 			# Write isolated Substrate and Deposit
-			# Only XYZ and AIMS file are written. Since 
-			# Since GULP is used only for optimization, 
-			# the isolated not opimized monomers are not 
+			# Only XYZ and AIMS file are written. Since
+			# Since GULP is used only for optimization,
+			# the isolated not opimized monomers are not
 			# very usefull.
 
 			if i in iface.idxSubH[t]: # Write isolated Substrate
@@ -4894,11 +5165,11 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 
 				if writeNWChem:
 					fileDNWC.write("%-4s   %12.6f   %12.6f   %12.6f\n"%(atom,x,y,z))
-		
+
 		# Write NWCHem input, butc WITHOUT capping atoms
 		# We use -iface.IfaceCapIdx, as in the array True is capping atom, False for materials atom
 		# and we want indices of material atom only
-		
+
 		if writeNWChem:
 			NWChemSubIdx = np.array(NWChemSubIdx)
 			NWChemDepIdx = np.array(NWChemDepIdx)
@@ -4914,12 +5185,12 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				z = NWChemPosNoCap[i][2]
 				fileNWCNoH.write("%-4s   %12.6f   %12.6f   %12.6f\n"%(atom,x,y,z))
 
-				if NWChemSubIdxNoCap[i]: 
+				if NWChemSubIdxNoCap[i]:
 					fileSNWCNoH.write("%-4s   %12.6f   %12.6f   %12.6f\n"%(atom,x,y,z))
-				if NWChemDepIdxNoCap[i]: 
+				if NWChemDepIdxNoCap[i]:
 					fileDNWCNoH.write("%-4s   %12.6f   %12.6f   %12.6f\n"%(atom,x,y,z))
 
-		# Finish GULP file - write potentials. 
+		# Finish GULP file - write potentials.
 		if writeGULP:
 			fileGULP.write("\n")
 			fileGULP.write("species\n")
@@ -4948,7 +5219,7 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 			# Create list with frozen indices where 1 is frozen, 0 not frozen.
 			# Create list with Substrate indices where 1 belongs to Dubstrate, 0 not
 			# Create list with Deposit indices where 1 belongs to Deposit, 0 not
-			# Do it for each atom 
+			# Do it for each atom
 			frozenidxVASP = []
 			idxSubHVASP   = []
 			idxDepHVASP   = []
@@ -4983,7 +5254,7 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 
 			capIdxVASP = iface.IfaceCapIdx[t][order]
 
-			atomTypes  = np.zeros((len(iface.atomTyp)),dtype=np.int)	
+			atomTypes  = np.zeros((len(iface.atomTyp)),dtype=np.int)
 			atomTypesS = np.zeros((len(iface.atomTyp)),dtype=np.int)
 			atomTypesD = np.zeros((len(iface.atomTyp)),dtype=np.int)
 
@@ -4997,13 +5268,13 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				if idxSubHVASP[i]:
 					atomTypesS[atom] += 1
 
-				# Count atom types in Deposit 
+				# Count atom types in Deposit
 				if idxDepHVASP[i]:
 					atomTypesD[atom] += 1
 
-			# We will not do POTCAR file. Instead we will create 
-			# file that will identify which species is what atom 
-			# in the order they are written in POSCAR file 
+			# We will not do POTCAR file. Instead we will create
+			# file that will identify which species is what atom
+			# in the order they are written in POSCAR file
 			atomTypesString  = ""
 			atomTypesStringS = ""
 			atomTypesStringD = ""
@@ -5051,7 +5322,7 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				x = IfacePosSCVASP[i][0]
 				y = IfacePosSCVASP[i][1]
 				z = IfacePosSCVASP[i][2]
-		
+
 				# Write interface
 				cOpt = "T T T"
 				if (cstrlxH) and atom == "H":
@@ -5085,11 +5356,11 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 					     ("%12.6f   %12.6f   %12.6f %s\n"%\
 					     (x,y,z,cOpt))
 			#No write VASP files, but without capping atoms
-			
+
 			# Re-order the IfaceCapIdx (indices of capping atoms) according to the species order
 			capIdxVASP = iface.IfaceCapIdx[t][order]
 
-			# Remove the capping atom from the atom list. We are using -index as capIdxVASP is 
+			# Remove the capping atom from the atom list. We are using -index as capIdxVASP is
 			# True for capping atom, False for everytinh else. We want True for any atom, False for capping atom
 			IfaceAtmSCVASP = IfaceAtmSCVASP[-capIdxVASP]
 			IfacePosSCVASP = IfacePosSCVASP[-capIdxVASP]
@@ -5098,7 +5369,7 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 			idxSubHVASP  = idxSubHVASP[-capIdxVASP]
 			idxDepHVASP  = idxDepHVASP[-capIdxVASP]
 
-			atomTypes  = np.zeros((len(iface.atomTyp)),dtype=np.int)	
+			atomTypes  = np.zeros((len(iface.atomTyp)),dtype=np.int)
 			atomTypesS = np.zeros((len(iface.atomTyp)),dtype=np.int)
 			atomTypesD = np.zeros((len(iface.atomTyp)),dtype=np.int)
 
@@ -5112,13 +5383,13 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				if idxSubHVASP[i]:
 					atomTypesS[atom] += 1
 
-				# Count atom types in Deposit 
+				# Count atom types in Deposit
 				if idxDepHVASP[i]:
 					atomTypesD[atom] += 1
 
-			# We will not do POTCAR file. Instead we will create 
-			# file that will identify which species is what atom 
-			# in the order they are written in POSCAR file 
+			# We will not do POTCAR file. Instead we will create
+			# file that will identify which species is what atom
+			# in the order they are written in POSCAR file
 			atomTypesString  = ""
 			atomTypesStringS = ""
 			atomTypesStringD = ""
@@ -5166,8 +5437,8 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 				x = IfacePosSCVASP[i][0]
 				y = IfacePosSCVASP[i][1]
 				z = IfacePosSCVASP[i][2]
-				
-		
+
+
 				# Write interface
 				cOpt = "T T T"
 				if (cstrlxH) and atom == "H":
@@ -5208,10 +5479,10 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		             %(norma,normb,normc,alpha,beta,gamma)
 			fileNWC.write(NWChemline)
 			fileSNWC.write(NWChemline)
-			fileDNWC.write(NWChemline)  
-			fileNWCNoH.write(NWChemline)  
-			fileSNWCNoH.write(NWChemline)  
-			fileDNWCNoH.write(NWChemline)  
+			fileDNWC.write(NWChemline)
+			fileNWCNoH.write(NWChemline)
+			fileSNWCNoH.write(NWChemline)
+			fileDNWCNoH.write(NWChemline)
 		# End of NWChem writing
 
 
@@ -5223,9 +5494,9 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 		fileIDX.write("Area: %12.6f\n"%area)
 		fileIDX.write("Misfit: %12.6f %12.6f, Angle: %12.6f\n"%(mfit[0],mfit[1],mfit[2]))
 
-		file.close()	
-		fileS.close()	
-		fileD.close()	
+		file.close()
+		fileS.close()
+		fileD.close()
 		if writeAIMS:
 			fileAIMS.close()
 			fileSAIMS.close()
@@ -5258,16 +5529,16 @@ def mkOutput(iface,confno,Dname,Dface,Sname,Sface,vecpairidx,nLS,nLD,mfit,\
 			fileDNWCNoH.close()
 
 		fileIDX.close()
-				
+
 		if writeGEN:
 			print "Generating DFTB+ .gen file"
-			# Create DFTB+ GEN file using external xyz2gen tool. 
+			# Create DFTB+ GEN file using external xyz2gen tool.
 			# Must be installed and be on the PATH
-			
+
 			# Decide how much vacumm to add on top of the interface
-			# The amount of vacumm is multiplication of the 
+			# The amount of vacumm is multiplication of the
 			# interface z-vector
-			
+
 			latfile = open("lattice.tmp",'w')
 			latfile.write("%12.6f  %12.6f  %12.6f\n"%\
 				     (iface.IfaceVecs[0][0],\
@@ -5317,8 +5588,25 @@ subCIF, subMiller, \
 depCIF, depMiller, \
 maxArea, areaThres, vecThres, angleThres,\
 capAtmS, capAtmD, fparam, nLS, nLD, nConf, subAtRad, depAtRad,\
-skipStep1, poissonRatio, sandwich, nVac = readInput(inputFile)
-print 
+skipStep1, poissonRatio, sandwich, nVac, checkPolar = readInput(inputFile)
+
+try:
+	 import networkx
+except ImportError:
+	 print
+	 print "********************************************************************"
+	 print "Module networx required to perform check for periodicity not found."
+	 print "DISABLING check for perioricity"
+	 print "If you want to have it enabled, please install SciPy"
+	 print "********************************************************************"
+	 print
+	 checkPolar = False
+	 print
+	 print "Proceeding in 2s..."
+	 time.sleep(2)
+
+
+print
 print "Substrate CIF..."
 i,transM,atoms,positions,atomTyp = ReadCIF(subCIF,atomTyp)
 print "Deposit CIF..."
@@ -5338,7 +5626,7 @@ subPrimNE  = []
 
 # Create big bulk of Substarte and Deposit.
 # It will be re-used each time an interface needs to be created
-print 
+print
 print "Constructing bulk strucutre for Substrate..."
 subBigBulk = Surface(transM,positions,atoms,atomTyp,np.array((0,0,0)))
 subBigBulk.bulkNEW(16)
@@ -5346,7 +5634,7 @@ print "Constructing bulk strucutre for Deposit..."
 depBigBulk = Surface(transM1,positions1,atoms1,atomTyp,np.array((0,0,0)))
 depBigBulk.bulkNEW(8)
 
-# Iterate over Miller indieces 
+# Iterate over Miller indieces
 iterNo = 0
 for subMillerString in subMillerList:
 	for depMillerString in depMillerList:
@@ -5399,10 +5687,10 @@ for subMillerString in subMillerList:
 			#exit()
 		Dep.primitivecell()
 
-		print 
-		print 
-		print 
-		print "Matching superlattices" 
+		print
+		print
+		print
+		print "Matching superlattices"
 		print
 
 		# ASSUME THAT P IS FOR DEPOSIT, Q FOR SUBSTRATE
@@ -5412,9 +5700,9 @@ for subMillerString in subMillerList:
 		print "List of q:"
 		print q
 
-		fitcount = 0 
-		totalcomb = 0 
-		resultlist=[] 
+		fitcount = 0
+		totalcomb = 0
+		resultlist=[]
 		vecsDeposit = []
 		vecsSubstrate = []
 
@@ -5422,7 +5710,7 @@ for subMillerString in subMillerList:
 			vecsD = Superlattice(Dep.a,Dep.b,p[i])
 			vecsS = Superlattice(Sub.a,Sub.b,q[i])
 			for ii in vecsD:
-				for jj in vecsS: 
+				for jj in vecsS:
 					fit,u1,v1,p1,u2,v2,p2 = SuperlatticeMatch(ii,jj,\
 								 vecThres, angleThres)
 					if fit:
@@ -5451,14 +5739,14 @@ for subMillerString in subMillerList:
 		print "NUMBER OF UNIQUE MATCHES FOUND: %i"%(len(resultlist))
 
 		#Didn't find any match
-		if len(resultlist) == 0: 
-			print 
-			print "********************************************************" 
-			print "Couldn't find any matching superlattices." 
-			print "Materials : %s(%s) - %s(%s) "%(subCIF[0:-4],subMillerString, 
-							      depCIF[0:-4],depMillerString) 
-			print "Try increasing the max. area or loosening the thresholds" 
-			print "********************************************************" 
+		if len(resultlist) == 0:
+			print
+			print "********************************************************"
+			print "Couldn't find any matching superlattices."
+			print "Materials : %s(%s) - %s(%s) "%(subCIF[0:-4],subMillerString,
+							      depCIF[0:-4],depMillerString)
+			print "Try increasing the max. area or loosening the thresholds"
+			print "********************************************************"
 			print
 			failedResults.append("%s-%s"%(subMillerString,depMillerString))
 			continue
@@ -5470,7 +5758,7 @@ for subMillerString in subMillerList:
 		nResults = len(resultlist)
 		misfitList =[]
 		for i in resultlist:
-			
+
 			ar1 = i[2]*i[3]*m.sin(i[4]*m.pi/180)
 			ar2 = i[5]*i[6]*m.sin(i[7]*m.pi/180)
 
@@ -5488,12 +5776,12 @@ for subMillerString in subMillerList:
 					%(mu,mv,mang,marea)
 			counter += 1
 			misfitList.append([mu,mv,mang,marea])
-		
+
 		print "CONSTRUCTING INTERFACE"
 		#Construct big planes for Substrate and Deposit
 		#nbulk2 = 8
 		#Sub.bulk(nbulk2)
-		print 
+		print
 		Sub.positions = subBigBulk.positions.copy()
 		Sub.atoms = subBigBulk.atoms.copy()
 	        Sub.positionsSmall = subBigBulk.positionsSmall.copy()
@@ -5541,8 +5829,8 @@ for subMillerString in subMillerList:
 					cosphi = prod/(nS*nD)
 					cosphi = round(cosphi,4)
 					resmat[ii,0] = m.acos(cosphi)
-					resmat[ii,1] = i  
-					resmat[ii,2] = j 
+					resmat[ii,1] = i
+					resmat[ii,2] = j
 					ii += 1
 			resmat = CleanMatElements(resmat)
 			# Sort the results and pick the smallest dot product
@@ -5555,7 +5843,7 @@ for subMillerString in subMillerList:
 
 		print
 		print "****************************"
-		print "Found %i possible alignments"%len(resmat) 
+		print "Found %i possible alignments"%len(resmat)
 		print "****************************"
 		print
 
@@ -5584,12 +5872,12 @@ for subMillerString in subMillerList:
 		#capAtmD = "H"
 		atomicRadius = subAtRad + depAtRad
 
-		bond = np.arange((0.5*atomicRadius)-0.5,(0.5*atomicRadius)+1.0,0.1) # range of bond lengths to scan for search of 
+		bond = np.arange((0.5*atomicRadius)-0.5,(0.5*atomicRadius)+1.0,0.1) # range of bond lengths to scan for search of
 					      # optimal Substrate-Deposit separation
-#		bond = np.arange(0.5,3.0,0.1) 
+#		bond = np.arange(0.5,3.0,0.1)
 
 		wflist = [fparam]  # list of f-parameters for Scoring function
-		#skipStep1 = True # option to skip Step 1. You must specify bondlist 
+		#skipStep1 = True # option to skip Step 1. You must specify bondlist
 		#                   # by hand below
 
 		bondlist = []      # list for Substrate-Deposit optimal sepration length
@@ -5599,15 +5887,15 @@ for subMillerString in subMillerList:
 #			bondlist = [0.9,2.2,1.3,1.4,2.2]
 
 		# Start generating structures
-		# Step 1: Optimal distance between Substrate and Deposit 
-		# Find the optimal distance between Substrate and Deposit using 
-		# scoring function. We do this by scanning the Substrate and Deposit 
-		# distance of first configurations for every anticipatory vectors pair 
-		# for the range of distances given in "bond" variable. We choose the 
+		# Step 1: Optimal distance between Substrate and Deposit
+		# Find the optimal distance between Substrate and Deposit using
+		# scoring function. We do this by scanning the Substrate and Deposit
+		# distance of first configurations for every anticipatory vectors pair
+		# for the range of distances given in "bond" variable. We choose the
 		# distance corresponding to maximal score and save it in "bondlist"
 
 		if not skipStep1:
-			print 
+			print
 			print "FLAG skipStep1 IS NOT SET."
 			print "USING SCORING FUNCTION TO DETERMINE OPTIMAL DISTANCE"
 			print "BETWEEN SLABS. THIS MIGHT TAKE A WHILE."
@@ -5628,11 +5916,11 @@ for subMillerString in subMillerList:
 				for i in bond:
 					iface = Interface(vecsDeposit[0],vecsSubstrate[0],\
 						     Dep,Sub,vecpair,i,fparam,atomicRadius,False,\
-						     False,False,False,False,False,False)
+						     False,False,False,False,False,False,False,False)
 					s1=iface.sc1
-					s2=iface.sc2	
+					s2=iface.sc2
 					sca=(s1+s2)/2
-			
+
 					bscoreD.append(s1)
 					bscoreS.append(s2)
 					bscoreSD.append(sca)
@@ -5654,10 +5942,10 @@ for subMillerString in subMillerList:
 		print "BOND LIST",bondlist
 		# Step 2: Generate configurations
 		# For every anticipatory vector pair in "resmat" generate number of structures
-		# given in "confnor", setting the spacing between them to one from "bondlist" 
+		# given in "confnor", setting the spacing between them to one from "bondlist"
 		# found in step 1.
 
-		vecpairidx = 0 
+		vecpairidx = 0
 		for vecpair in resmat:
 			aligNo = vecpairidx
 			print
@@ -5672,7 +5960,7 @@ for subMillerString in subMillerList:
 			scresultsD=[]
 			scresultsSD=[]
 
-			for wf in wflist: # Old option to be able to scan the entire space of 
+			for wf in wflist: # Old option to be able to scan the entire space of
 					  # f-parameters in scoring function in one run.
 				resultstmpS=[]
 				resultstmpD=[]
@@ -5687,11 +5975,11 @@ for subMillerString in subMillerList:
 							vecsSubstrate[confno],Dep,Sub,\
 							vecpair,i,wf,atomicRadius, nLS, nLD,\
 							capAtmD, capAtmS,sandwich,\
-							genHD,genHS,poissonRatio)
+							genHD,genHS,poissonRatio,checkPolar)
 					s1=iface.sc1
-					s2=iface.sc2	
+					s2=iface.sc2
 					sca=(s1+s2)/2
-			
+
 					resultstmpD.append(s1)
 					resultstmpS.append(s2)
 					resultstmpSD.append(sca)
@@ -5796,10 +6084,9 @@ if len(depPrimNE) >0:
 		fileF.write("%s\n"%i)
 	fileF.write("\n\n")
 
-fileF.close()	
+fileF.close()
 
 
 for i in range(len(misfitList)):
 	n = ((misfitList[i][0]**2) + (misfitList[i][1]**2))**0.5
 	print "%i   %12.6f"%(i,n)
-

@@ -14,7 +14,8 @@ nLayerD       40.0         # Thickness of Deposit slab [A]
 noConf        2            # Desired number of configurations to return
 subAtRad      1.16         # Substrate atomic radius
 depAtRad      1.36         # Deposit atomic radius
-skipStep1     False        # Skip automatic generation of slabs distance True/False
+skipStep1     True        # Skip automatic generation of slabs distance True/False
 poissonRatio  True         # Scale z-axis in the Deposit according to Poisson ratio
 sandwich      False        # make a sandwich configuration S-D-S
 nVac          75           # Thickness of vacuum in A
+checkPolar    True        # Check for polarity
