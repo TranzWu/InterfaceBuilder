@@ -1,0 +1,21 @@
+substrate     Si-opt.cif       # CIF file for Substrate
+substrateIDX  110          # Miller indices for Substrate
+deposit       SiO2.cif       # CIF file for Deposit
+depositIDX    001          # Miller indices for Deposit
+maxArea       250          # Maximum area of lattices
+areaThresh    5.0          # Threshold for area misfit    [in %]
+vecThresh     5.0          # Threshold for vectors misfit [in %]
+angleThresh   5.0          # Threshold for angle misfit   [in %]
+capAtmSub     H            # Atom to cap the substrate exposed surface or None
+capAtmDep     None         # Atom to cap deposit exposed surface or None
+fparam        1            # Parameter f for scoring function
+nLayerS       40.0         # Thickness of Substrate slab [A]
+nLayerD       40.0         # Thickness of Deposit slab [A]
+noConf        2            # Desired number of configurations to return
+subAtRad      1.16         # Substrate atomic radius
+depAtRad      1.36         # Deposit atomic radius
+skipStep1     True        # Skip automatic generation of slabs distance True/False
+poissonRatio  True         # Scale z-axis in the Deposit according to Poisson ratio
+sandwich      False        # make a sandwich configuration S-D-S
+nVac          75           # Thickness of vacuum in A
+checkPolar    True        # Check for polarity

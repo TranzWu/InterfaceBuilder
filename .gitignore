@@ -1,0 +1,6 @@
+*.dvi
+*.aux
+*.log
+acs-*.bib
+miller
+mike

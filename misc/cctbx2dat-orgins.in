@@ -1,0 +1,490 @@
+ P 1,          P 1\0 
+ P -1,        -P 1\0 
+ P 1 2 1,      P 2y\0 
+ P 1 1 2,      P 2\0 
+ P 2 1 1,      P 2x\0 
+ P 1 21 1,     P 2yb\0 
+ P 1 1 21,     P 2c\0 
+ P 21 1 1,     P 2xa\0 
+ C 1 2 1,      C 2y\0 
+ A 1 2 1,      A 2y\0 
+ I 1 2 1,      I 2y\0 
+ A 1 1 2,      A 2\0 
+ B 1 1 2,      B 2\0 
+ I 1 1 2,      I 2\0 
+ B 2 1 1,      B 2x\0 
+ C 2 1 1,      C 2x\0 
+ I 2 1 1,      I 2x\0 
+ P 1 m 1,      P -2y\0 
+ P 1 1 m,      P -2\0 
+ P m 1 1,      P -2x\0 
+ P 1 c 1,      P -2yc\0 
+ P 1 n 1,      P -2yac\0 
+ P 1 a 1,      P -2ya\0 
+ P 1 1 a,      P -2a\0 
+ P 1 1 n,      P -2ab\0 
+ P 1 1 b,      P -2b\0 
+ P b 1 1,      P -2xb\0 
+ P n 1 1,      P -2xbc\0 
+ P c 1 1,      P -2xc\0 
+ C 1 m 1,      C -2y\0 
+ A 1 m 1,      A -2y\0 
+ I 1 m 1,      I -2y\0 
+ A 1 1 m,      A -2\0 
+ B 1 1 m,      B -2\0 
+ I 1 1 m,      I -2\0 
+ B m 1 1,      B -2x\0 
+ C m 1 1,      C -2x\0 
+ I m 1 1,      I -2x\0 
+ C 1 c 1,      C -2yc\0 
+ A 1 n 1,      A -2yab\0 
+ I 1 a 1,      I -2ya\0 
+ A 1 a 1,      A -2ya\0 
+ C 1 n 1,      C -2yac\0 
+ I 1 c 1,      I -2yc\0 
+ A 1 1 a,      A -2a\0 
+ B 1 1 n,      B -2ab\0 
+ I 1 1 b,      I -2b\0 
+ B 1 1 b,      B -2b\0 
+ A 1 1 n,      A -2ab\0 
+ I 1 1 a,      I -2a\0 
+ B b 1 1,      B -2xb\0 
+ C n 1 1,      C -2xac\0 
+ I c 1 1,      I -2xc\0 
+ C c 1 1,      C -2xc\0 
+ B n 1 1,      B -2xab\0 
+ I b 1 1,      I -2xb\0 
+ P 1 2/m 1,   -P 2y\0 
+ P 1 1 2/m,   -P 2\0 
+ P 2/m 1 1,   -P 2x\0 
+ P 1 21/m 1,  -P 2yb\0 
+ P 1 1 21/m,  -P 2c\0 
+ P 21/m 1 1,  -P 2xa\0 
+ C 1 2/m 1,   -C 2y\0 
+ A 1 2/m 1,   -A 2y\0 
+ I 1 2/m 1,   -I 2y\0 
+ A 1 1 2/m,   -A 2\0 
+ B 1 1 2/m,   -B 2\0 
+ I 1 1 2/m,   -I 2\0 
+ B 2/m 1 1,   -B 2x\0 
+ C 2/m 1 1,   -C 2x\0 
+ I 2/m 1 1,   -I 2x\0 
+ P 1 2/c 1,   -P 2yc\0 
+ P 1 2/n 1,   -P 2yac\0 
+ P 1 2/a 1,   -P 2ya\0 
+ P 1 1 2/a,   -P 2a\0 
+ P 1 1 2/n,   -P 2ab\0 
+ P 1 1 2/b,   -P 2b\0 
+ P 2/b 1 1,   -P 2xb\0 
+ P 2/n 1 1,   -P 2xbc\0 
+ P 2/c 1 1,   -P 2xc\0 
+ P 1 21/c 1,  -P 2ybc\0 
+ P 1 21/n 1,  -P 2yn\0 
+ P 1 21/a 1,  -P 2yab\0 
+ P 1 1 21/a,  -P 2ac\0 
+ P 1 1 21/n,  -P 2n\0 
+ P 1 1 21/b,  -P 2bc\0 
+ P 21/b 1 1,  -P 2xab\0 
+ P 21/n 1 1,  -P 2xn\0 
+ P 21/c 1 1,  -P 2xac\0 
+ C 1 2/c 1,   -C 2yc\0 
+ A 1 2/n 1,   -A 2yab\0 
+ I 1 2/a 1,   -I 2ya\0 
+ A 1 2/a 1,   -A 2ya\0 
+ C 1 2/n 1,   -C 2yac\0 
+ I 1 2/c 1,   -I 2yc\0 
+ A 1 1 2/a,   -A 2a\0 
+ B 1 1 2/n,   -B 2ab\0 
+ I 1 1 2/b,   -I 2b\0 
+ B 1 1 2/b,   -B 2b\0 
+ A 1 1 2/n,   -A 2ab\0 
+ I 1 1 2/a,   -I 2a\0 
+ B 2/b 1 1,   -B 2xb\0 
+ C 2/n 1 1,   -C 2xac\0 
+ I 2/c 1 1,   -I 2xc\0 
+ C 2/c 1 1,   -C 2xc\0 
+ B 2/n 1 1,   -B 2xab\0 
+ I 2/b 1 1,   -I 2xb\0 
+ P 2 2 2,      P 2 2\0 
+ P 2 2 21,     P 2c 2\0 
+ P 21 2 2,     P 2a 2a\0 
+ P 2 21 2,     P 2 2b\0 
+ P 21 21 2,    P 2 2ab\0 
+ P 2 21 21,    P 2bc 2\0 
+ P 21 2 21,    P 2ac 2ac\0 
+ P 21 21 21,   P 2ac 2ab\0 
+ C 2 2 21,     C 2c 2\0 
+ A 21 2 2,     A 2a 2a\0 
+ B 2 21 2,     B 2 2b\0 
+ C 2 2 2,      C 2 2\0 
+ A 2 2 2,      A 2 2\0 
+ B 2 2 2,      B 2 2\0 
+ F 2 2 2,      F 2 2\0 
+ I 2 2 2,      I 2 2\0 
+ I 21 21 21,   I 2b 2c\0 
+ P m m 2,      P 2 -2\0 
+ P 2 m m,      P -2 2\0 
+ P m 2 m,      P -2 -2\0 
+ P m c 21,     P 2c -2\0 
+ P c m 21,     P 2c -2c\0 
+ P 21 m a,     P -2a 2a\0 
+ P 21 a m,     P -2 2a\0 
+ P b 21 m,     P -2 -2b\0 
+ P m 21 b,     P -2b -2\0 
+ P c c 2,      P 2 -2c\0 
+ P 2 a a,      P -2a 2\0 
+ P b 2 b,      P -2b -2b\0 
+ P m a 2,      P 2 -2a\0 
+ P b m 2,      P 2 -2b\0 
+ P 2 m b,      P -2b 2\0 
+ P 2 c m,      P -2c 2\0 
+ P c 2 m,      P -2c -2c\0 
+ P m 2 a,      P -2a -2a\0 
+ P c a 21,     P 2c -2ac\0 
+ P b c 21,     P 2c -2b\0 
+ P 21 a b,     P -2b 2a\0 
+ P 21 c a,     P -2ac 2a\0 
+ P c 21 b,     P -2bc -2c\0 
+ P b 21 a,     P -2a -2ab\0 
+ P n c 2,      P 2 -2bc\0 
+ P c n 2,      P 2 -2ac\0 
+ P 2 n a,      P -2ac 2\0 
+ P 2 a n,      P -2ab 2\0 
+ P b 2 n,      P -2ab -2ab\0 
+ P n 2 b,      P -2bc -2bc\0 
+ P m n 21,     P 2ac -2\0 
+ P n m 21,     P 2bc -2bc\0 
+ P 21 m n,     P -2ab 2ab\0 
+ P 21 n m,     P -2 2ac\0 
+ P n 21 m,     P -2 -2bc\0 
+ P m 21 n,     P -2ab -2\0 
+ P b a 2,      P 2 -2ab\0 
+ P 2 c b,      P -2bc 2\0 
+ P c 2 a,      P -2ac -2ac\0 
+ P n a 21,     P 2c -2n\0 
+ P b n 21,     P 2c -2ab\0 
+ P 21 n b,     P -2bc 2a\0 
+ P 21 c n,     P -2n 2a\0 
+ P c 21 n,     P -2n -2ac\0 
+ P n 21 a,     P -2ac -2n\0 
+ P n n 2,      P 2 -2n\0 
+ P 2 n n,      P -2n 2\0 
+ P n 2 n,      P -2n -2n\0 
+ C m m 2,      C 2 -2\0 
+ A 2 m m,      A -2 2\0 
+ B m 2 m,      B -2 -2\0 
+ C m c 21,     C 2c -2\0 
+ C c m 21,     C 2c -2c\0 
+ A 21 m a,     A -2a 2a\0 
+ A 21 a m,     A -2 2a\0 
+ B b 21 m,     B -2 -2b\0 
+ B m 21 b,     B -2b -2\0 
+ C c c 2,      C 2 -2c\0 
+ A 2 a a,      A -2a 2\0 
+ B b 2 b,      B -2b -2b\0 
+ A m m 2,      A 2 -2\0 
+ B m m 2,      B 2 -2\0 
+ B 2 m m,      B -2 2\0 
+ C 2 m m,      C -2 2\0 
+ C m 2 m,      C -2 -2\0 
+ A m 2 m,      A -2 -2\0 
+ A b m 2,      A 2 -2b\0 
+ B m a 2,      B 2 -2a\0 
+ B 2 c m,      B -2a 2\0 
+ C 2 m b,      C -2a 2\0 
+ C m 2 a,      C -2a -2a\0 
+ A c 2 m,      A -2b -2b\0 
+ A m a 2,      A 2 -2a\0 
+ B b m 2,      B 2 -2b\0 
+ B 2 m b,      B -2b 2\0 
+ C 2 c m,      C -2c 2\0 
+ C c 2 m,      C -2c -2c\0 
+ A m 2 a,      A -2a -2a\0 
+ A b a 2,      A 2 -2ab\0 
+ B b a 2,      B 2 -2ab\0 
+ B 2 c b,      B -2ab 2\0 
+ C 2 c b,      C -2ac 2\0 
+ C c 2 a,      C -2ac -2ac\0 
+ A c 2 a,      A -2ab -2ab\0 
+ F m m 2,      F 2 -2\0 
+ F 2 m m,      F -2 2\0 
+ F m 2 m,      F -2 -2\0 
+ F d d 2,      F 2 -2d\0 
+ F 2 d d,      F -2d 2\0 
+ F d 2 d,      F -2d -2d\0 
+ I m m 2,      I 2 -2\0 
+ I 2 m m,      I -2 2\0 
+ I m 2 m,      I -2 -2\0 
+ I b a 2,      I 2 -2c\0 
+ I 2 c b,      I -2a 2\0 
+ I c 2 a,      I -2b -2b\0 
+ I m a 2,      I 2 -2a\0 
+ I b m 2,      I 2 -2b\0 
+ I 2 m b,      I -2b 2\0 
+ I 2 c m,      I -2c 2\0 
+ I c 2 m,      I -2c -2c\0 
+ I m 2 a,      I -2a -2a\0 
+ P m m m,     -P 2 2\0 
+ P n n n,      P 2 2 -1n\0-P 2ab 2bc\0 
+ P c c m,     -P 2 2c\0 
+ P m a a,     -P 2a 2\0 
+ P b m b,     -P 2b 2b\0 
+ P b a n,      P 2 2 -1ab\0-P 2ab 2b\0 
+ P n c b,      P 2 2 -1bc\0-P 2b 2bc\0 
+ P c n a,      P 2 2 -1ac\0-P 2a 2c\0 
+ P m m a,     -P 2a 2a\0 
+ P m m b,     -P 2b 2\0 
+ P b m m,     -P 2 2b\0 
+ P c m m,     -P 2c 2c\0 
+ P m c m,     -P 2c 2\0 
+ P m a m,     -P 2 2a\0 
+ P n n a,     -P 2a 2bc\0 
+ P n n b,     -P 2b 2n\0 
+ P b n n,     -P 2n 2b\0 
+ P c n n,     -P 2ab 2c\0 
+ P n c n,     -P 2ab 2n\0 
+ P n a n,     -P 2n 2bc\0 
+ P m n a,     -P 2ac 2\0 
+ P n m b,     -P 2bc 2bc\0 
+ P b m n,     -P 2ab 2ab\0 
+ P c n m,     -P 2 2ac\0 
+ P n c m,     -P 2 2bc\0 
+ P m a n,     -P 2ab 2\0 
+ P c c a,     -P 2a 2ac\0 
+ P c c b,     -P 2b 2c\0 
+ P b a a,     -P 2a 2b\0 
+ P c a a,     -P 2ac 2c\0 
+ P b c b,     -P 2bc 2b\0 
+ P b a b,     -P 2b 2ab\0 
+ P b a m,     -P 2 2ab\0 
+ P m c b,     -P 2bc 2\0 
+ P c m a,     -P 2ac 2ac\0 
+ P c c n,     -P 2ab 2ac\0 
+ P n a a,     -P 2ac 2bc\0 
+ P b n b,     -P 2bc 2ab\0 
+ P b c m,     -P 2c 2b\0 
+ P c a m,     -P 2c 2ac\0 
+ P m c a,     -P 2ac 2a\0 
+ P m a b,     -P 2b 2a\0 
+ P b m a,     -P 2a 2ab\0 
+ P c m b,     -P 2bc 2c\0 
+ P n n m,     -P 2 2n\0 
+ P m n n,     -P 2n 2\0 
+ P n m n,     -P 2n 2n\0 
+ P m m n,      P 2 2ab -1ab\0-P 2ab 2a\0 
+ P n m m,      P 2bc 2 -1bc\0-P 2c 2bc\0 
+ P m n m,      P 2ac 2ac -1ac\0-P 2c 2a\0 
+ P b c n,     -P 2n 2ab\0 
+ P c a n,     -P 2n 2c\0 
+ P n c a,     -P 2a 2n\0 
+ P n a b,     -P 2bc 2n\0 
+ P b n a,     -P 2ac 2b\0 
+ P c n b,     -P 2b 2ac\0 
+ P b c a,     -P 2ac 2ab\0 
+ P c a b,     -P 2bc 2ac\0 
+ P n m a,     -P 2ac 2n\0 
+ P m n b,     -P 2bc 2a\0 
+ P b n m,     -P 2c 2ab\0 
+ P c m n,     -P 2n 2ac\0 
+ P m c n,     -P 2n 2a\0 
+ P n a m,     -P 2c 2n\0 
+ C m c m,     -C 2c 2\0 
+ C c m m,     -C 2c 2c\0 
+ A m m a,     -A 2a 2a\0 
+ A m a m,     -A 2 2a\0 
+ B b m m,     -B 2 2b\0 
+ B m m b,     -B 2b 2\0 
+ C m c a,     -C 2ac 2\0 
+ C c m b,     -C 2ac 2ac\0 
+ A b m a,     -A 2ab 2ab\0 
+ A c a m,     -A 2 2ab\0 
+ B b c m,     -B 2 2ab\0 
+ B m a b,     -B 2ab 2\0 
+ C m m m,     -C 2 2\0 
+ A m m m,     -A 2 2\0 
+ B m m m,     -B 2 2\0 
+ C c c m,     -C 2 2c\0 
+ A m a a,     -A 2a 2\0 
+ B b m b,     -B 2b 2b\0 
+ C m m a,     -C 2a 2\0 
+ C m m b,     -C 2a 2a\0 
+ A b m m,     -A 2b 2b\0 
+ A c m m,     -A 2 2b\0 
+ B m c m,     -B 2 2a\0 
+ B m a m,     -B 2a 2\0 
+ C c c a,      C 2 2 -1ac\0-C 2a 2ac\0 
+ C c c b,      C 2 2 -1ac\0-C 2a 2c\0 
+ A b a a,      A 2 2 -1ab\0-A 2a 2b\0 
+ A c a a,      A 2 2 -1ab\0-A 2ab 2b\0 
+ B b c b,      B 2 2 -1ab\0-B 2ab 2b\0 
+ B b a b,      B 2 2 -1ab\0-B 2b 2ab\0 
+ F m m m,     -F 2 2\0 
+ F d d d,      F 2 2 -1d\0-F 2uv 2vw\0 
+ I m m m,     -I 2 2\0 
+ I b a m,     -I 2 2c\0 
+ I m c b,     -I 2a 2\0 
+ I c m a,     -I 2b 2b\0 
+ I b c a,     -I 2b 2c\0 
+ I c a b,     -I 2a 2b\0 
+ I m m a,     -I 2b 2\0 
+ I m m b,     -I 2a 2a\0 
+ I b m m,     -I 2c 2c\0 
+ I c m m,     -I 2 2b\0 
+ I m c m,     -I 2 2a\0 
+ I m a m,     -I 2c 2\0 
+ P 4,          P 4\0 
+ P 41,         P 4w\0 
+ P 42,         P 4c\0 
+ P 43,         P 4cw\0 
+ I 4,          I 4\0 
+ I 41,         I 4bw\0 
+ P -4,         P -4\0 
+ I -4,         I -4\0 
+ P 4/m,       -P 4\0 
+ P 42/m,      -P 4c\0 
+ P 4/n,        P 4ab -1ab\0-P 4a\0 
+ P 42/n,       P 4n -1n\0-P 4bc\0 
+ I 4/m,       -I 4\0 
+ I 41/a,       I 4bw -1bw\0-I 4ad\0 
+ P 4 2 2,      P 4 2\0 
+ P 4 21 2,     P 4ab 2ab\0 
+ P 41 2 2,     P 4w 2c\0 
+ P 41 21 2,    P 4abw 2nw\0 
+ P 42 2 2,     P 4c 2\0 
+ P 42 21 2,    P 4n 2n\0 
+ P 43 2 2,     P 4cw 2c\0 
+ P 43 21 2,    P 4nw 2abw\0 
+ I 4 2 2,      I 4 2\0 
+ I 41 2 2,     I 4bw 2bw\0 
+ P 4 m m,      P 4 -2\0 
+ P 4 b m,      P 4 -2ab\0 
+ P 42 c m,     P 4c -2c\0 
+ P 42 n m,     P 4n -2n\0 
+ P 4 c c,      P 4 -2c\0 
+ P 4 n c,      P 4 -2n\0 
+ P 42 m c,     P 4c -2\0 
+ P 42 b c,     P 4c -2ab\0 
+ I 4 m m,      I 4 -2\0 
+ I 4 c m,      I 4 -2c\0 
+ I 41 m d,     I 4bw -2\0 
+ I 41 c d,     I 4bw -2c\0 
+ P -4 2 m,     P -4 2\0 
+ P -4 2 c,     P -4 2c\0 
+ P -4 21 m,    P -4 2ab\0 
+ P -4 21 c,    P -4 2n\0 
+ P -4 m 2,     P -4 -2\0 
+ P -4 c 2,     P -4 -2c\0 
+ P -4 b 2,     P -4 -2ab\0 
+ P -4 n 2,     P -4 -2n\0 
+ I -4 m 2,     I -4 -2\0 
+ I -4 c 2,     I -4 -2c\0 
+ I -4 2 m,     I -4 2\0 
+ I -4 2 d,     I -4 2bw\0 
+ P 4/m m m,   -P 4 2\0 
+ P 4/m c c,   -P 4 2c\0 
+ P 4/n b m,    P 4 2 -1ab\0-P 4a 2b\0 
+ P 4/n n c,    P 4 2 -1n\0-P 4a 2bc\0 
+ P 4/m b m,   -P 4 2ab\0 
+ P 4/m n c,   -P 4 2n\0 
+ P 4/n m m,    P 4ab 2ab -1ab\0-P 4a 2a\0 
+ P 4/n c c,    P 4ab 2n -1ab\0-P 4a 2ac\0 
+ P 42/m m c,  -P 4c 2\0 
+ P 42/m c m,  -P 4c 2c\0 
+ P 42/n b c,   P 4n 2c -1n\0-P 4ac 2b\0 
+ P 42/n n m,   P 4n 2 -1n\0-P 4ac 2bc\0 
+ P 42/m b c,  -P 4c 2ab\0 
+ P 42/m n m,  -P 4n 2n\0 
+ P 42/n m c,   P 4n 2n -1n\0-P 4ac 2a\0 
+ P 42/n c m,   P 4n 2ab -1n\0-P 4ac 2ac\0 
+ I 4/m m m,   -I 4 2\0 
+ I 4/m c m,   -I 4 2c\0 
+ I 41/a m d,   I 4bw 2bw -1bw\0-I 4bd 2\0 
+ I 41/a c d,   I 4bw 2aw -1bw\0-I 4bd 2c\0 
+ P 3,          P 3\0 
+ P 31,         P 31\0 
+ P 32,         P 32\0 
+ R 3,          R 3\0 P 3*\0 
+ P -3,        -P 3\0 
+ R -3,        -R 3\0-P 3*\0 
+ P 3 1 2,      P 3 2\0 
+ P 3 2 1,      P 3 2\\0 
+ P 31 1 2,     P 31 2 (0 0 4)\0 
+ P 31 2 1,     P 31 2\\0 
+ P 32 1 2,     P 32 2 (0 0 2)\0 
+ P 32 2 1,     P 32 2\\0 
+ R 3 2,        R 3 2\\0 P 3* 2\0 
+ P 3 m 1,      P 3 -2\\0 
+ P 3 1 m,      P 3 -2\0 
+ P 3 c 1,      P 3 -2\c\0 
+ P 3 1 c,      P 3 -2c\0 
+ R 3 m,        R 3 -2\\0 P 3* -2\0 
+ R 3 c,        R 3 -2\c\0 P 3* -2n\0 
+ P -3 1 m,    -P 3 2\0 
+ P -3 1 c,    -P 3 2c\0 
+ P -3 m 1,    -P 3 2\\0 
+ P -3 c 1,    -P 3 2\c\0 
+ R -3 m,      -R 3 2\\0-P 3* 2\0 
+ R -3 c,      -R 3 2\c\0-P 3* 2n\0 
+ P 6,          P 6\0 
+ P 61,         P 61\0 
+ P 65,         P 65\0 
+ P 62,         P 62\0 
+ P 64,         P 64\0 
+ P 63,         P 6c\0 
+ P -6,         P -6\0 
+ P 6/m,       -P 6\0 
+ P 63/m,      -P 6c\0 
+ P 6 2 2,      P 6 2\0 
+ P 61 2 2,     P 61 2 (0 0 5)\0 
+ P 65 2 2,     P 65 2 (0 0 1)\0 
+ P 62 2 2,     P 62 2 (0 0 4)\0 
+ P 64 2 2,     P 64 2 (0 0 2)\0 
+ P 63 2 2,     P 6c 2c\0 
+ P 6 m m,      P 6 -2\0 
+ P 6 c c,      P 6 -2c\0 
+ P 63 c m,     P 6c -2\0 
+ P 63 m c,     P 6c -2c\0 
+ P -6 m 2,     P -6 2\0 
+ P -6 c 2,     P -6c 2\0 
+ P -6 2 m,     P -6 -2\0 
+ P -6 2 c,     P -6c -2c\0 
+ P 6/m m m,   -P 6 2\0 
+ P 6/m c c,   -P 6 2c\0 
+ P 63/m c m,  -P 6c 2\0 
+ P 63/m m c,  -P 6c 2c\0 
+ P 2 3,        P 2 2 3\0 
+ F 2 3,        F 2 2 3\0 
+ I 2 3,        I 2 2 3\0 
+ P 21 3,       P 2ac 2ab 3\0 
+ I 21 3,       I 2b 2c 3\0 
+ P m -3,      -P 2 2 3\0 
+ P n -3,       P 2 2 3 -1n\0-P 2ab 2bc 3\0 
+ F m -3,      -F 2 2 3\0 
+ F d -3,       F 2 2 3 -1d\0-F 2uv 2vw 3\0 
+ I m -3,      -I 2 2 3\0 
+ P a -3,      -P 2ac 2ab 3\0 
+ I a -3,      -I 2b 2c 3\0 
+ P 4 3 2,      P 4 2 3\0 
+ P 42 3 2,     P 4n 2 3\0 
+ F 4 3 2,      F 4 2 3\0 
+ F 41 3 2,     F 4d 2 3\0 
+ I 4 3 2,      I 4 2 3\0 
+ P 43 3 2,     P 4acd 2ab 3\0 
+ P 41 3 2,     P 4bd 2ab 3\0 
+ I 41 3 2,     I 4bd 2c 3\0 
+ P -4 3 m,     P -4 2 3\0 
+ F -4 3 m,     F -4 2 3\0 
+ I -4 3 m,     I -4 2 3\0 
+ P -4 3 n,     P -4n 2 3\0 
+ F -4 3 c,     F -4a 2 3\0 
+ I -4 3 d,     I -4bd 2c 3\0 
+ P m -3 m,    -P 4 2 3\0 
+ P n -3 n,     P 4 2 3 -1n\0-P 4a 2bc 3\0 
+ P m -3 n,    -P 4n 2 3\0 
+ P n -3 m,     P 4n 2 3 -1n\0-P 4bc 2bc 3\0 
+ F m -3 m,    -F 4 2 3\0 
+ F m -3 c,    -F 4a 2 3\0 
+ F d -3 m,     F 4d 2 3 -1d\0-F 4vw 2vw 3\0 
+ F d -3 c,     F 4d 2 3 -1ad\0-F 4ud 2vw 3\0 
+ I m -3 m,    -I 4 2 3\0 
+ I a -3 d,    -I 4bd 2c 3\0 
